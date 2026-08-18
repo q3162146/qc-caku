@@ -1,0 +1,16 @@
+# ===== git 本地运行时（解包自 deb 包，未系统安装，勿入库）=====
+.git-local/
+
+# ===== OCR 地名考据中间过程产物（最终结论见 素材包/20 与 美术参考/山海图地名核验）=====
+logs/ocr_bw/
+logs/ocr_final/
+logs/ocr_pin/
+logs/ocr_quads/
+logs/ocr_tiles/
+logs/ocr_windows/
+logs/ocr_zoom/
+
+# ===== 系统杂项 =====
+Thumbs.db
+Desktop.ini
+.DS_Store
