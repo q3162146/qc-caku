@@ -22,6 +22,8 @@ local Chapters = require "config.Chapters"
 local SceneManager = require "game.SceneManager"
 local PlayerController = require "game.PlayerController"
 local FlowController = require "flow.FlowController"
+local DialogueUI = require "ui.DialogueUI"
+local UI = require "urhox-libs/UI"
 
 ---@type Scene|nil
 local scene_ = nil
@@ -110,33 +112,42 @@ end
 -- ============================================================================
 
 function Start()
-    print("=== 桃素洛无幽·素女篇 启动（白模骨架会话） ===")
+    print("=== 桃素洛无幽·素女篇 启动（S2 对话会话） ===")
 
     -- 1. 单机模式校验（异常即退出）
     if not ValidateSinglePlayerConfig() then
         return
     end
 
-    -- 2. 场景与玩家
+    -- 2. UI 系统（对话/选项/字幕统一用 urhox-libs/UI）
+    UI.Init({
+        fonts = {
+            { family = "sans", weights = { normal = "Fonts/MiSans-Regular.ttf" } },
+        },
+        scale = UI.Scale.DEFAULT,
+    })
+
+    -- 3. 场景与玩家
     CreateScene()
     PlayerController.Create(scene_)
     SceneManager.Init(scene_, PlayerController)
 
-    -- 3. 数据与流程（本会话无存档 IO，用全新数据）
+    -- 4. 数据与流程（本会话无存档 IO，用全新数据）
     local data = PlayerData.Sanitize(nil)
     FlowController.Init(data)
     FlowController.Start()
 
-    -- 4. 事件订阅
+    -- 5. 事件订阅
     SubscribeToEvent("Update", "HandleUpdate")
     SubscribeToEvent("PostUpdate", "HandlePostUpdate")
 
     print("=== 启动完成 ===")
-    print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | Shift 跑步")
+    print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃/对话推进 | 走近守桃老人触发对话")
     print("调试：F5 强制完成段落 | F2/F3/F4 直切三场景 | ESC 退出")
 end
 
 function Stop()
+    UI.Shutdown()
     print("[main] 停止")
 end
 
@@ -145,7 +156,12 @@ end
 function HandleUpdate(eventType, eventData)
     local timeStep = eventData["TimeStep"]:GetFloat()
 
-    PlayerController.Update(timeStep)
+    -- 对话打开时：只处理对话输入，玩家停移动（防串台）
+    if DialogueUI.IsOpen() then
+        DialogueUI.HandleInput()
+    else
+        PlayerController.Update(timeStep)
+    end
 
     -- 调试快捷键
     if input:GetKeyPress(KEY_F5) then

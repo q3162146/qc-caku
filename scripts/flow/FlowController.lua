@@ -11,13 +11,15 @@
 --
 -- 本会话段落类型：
 --   video     媒体未接入 → 自动完成（打日志跳过，正式接入在演出会话）；
---   dialogue/choice 对话系统未接入 → 自动通过（打日志跳过）；
+--   dialogue/choice 对话系统已接入（S2）→ 走 DialogueUI 真实交互；
 --   explore   收集完场景标记点即完成（白模玩法闭环演示）；
 --   end       收尾段落 → 按 next 循环（骨架期演示闭环，ch2~ch4 接入后移除）。
 -- ============================================================================
 
 local PlayerData = require "config.PlayerData"
 local Chapters = require "config.Chapters"
+local DialogueData = require "config.DialogueData"
+local DialogueUI = require "ui.DialogueUI"
 local SceneManager = require "game.SceneManager"
 local PlayerController = require "game.PlayerController"
 
@@ -76,10 +78,7 @@ function EnterParagraph()
         print("[Flow] 视频段落 " .. (p.video or "?") .. " 未接入媒体模块，本会话自动跳过")
         CompleteParagraph({ done = true })
     elseif p.type == "dialogue" or p.type == "choice" then
-        -- 对话/选择系统未接入：本会话自动通过（正式接入见对话会话）
-        print("[Flow] " .. (p.type == "dialogue" and "对话" or "选择") .. "段落（"
-            .. tostring(p.npc or "?") .. "）未接入对话系统，本会话自动通过")
-        CompleteParagraph({ done = true })
+        StartDialogueParagraph(p)
     elseif p.type == "explore" then
         state_.collectCount = p.collectCount or 3
         print("[Flow] 探索段（" .. tostring(p.goal or "") .. "）：收集 "
@@ -90,10 +89,64 @@ function EnterParagraph()
     end
 end
 
---- 玩法模块上报"拾取一朵桃花"（规则：累计 → 达标返回统一完成结果）
----@param key string 五行键
+--- 启动对话/选择段落（S2：dialogue/choice → DialogueUI）
+---@param p table 段落定义
+function StartDialogueParagraph(p)
+    local spec = DialogueData.Get(p.lines)
+    if spec == nil then
+        print("[Flow] 对话数据缺失（lines=" .. tostring(p.lines) .. "），自动通过")
+        CompleteParagraph({ done = true })
+        return
+    end
+
+    -- 副本注入回调（不改 DialogueData 原表）
+    local dlg = {
+        npc = spec.npc,
+        intro = spec.intro,
+        lines = spec.lines,
+        prompt = spec.prompt,
+        choices = spec.choices,
+        choiceOrder = spec.choiceOrder,
+    }
+
+    if p.type == "choice" then
+        dlg.onChoose = function(key)
+            OnChoiceMade(p, key)
+        end
+        print("[Flow] 选择段 " .. p.id .. "（" .. tostring(p.lines) .. "）")
+        DialogueUI.ShowChoice(dlg)
+    else
+        dlg.onDone = function()
+            CompleteParagraph({ done = true })
+        end
+        print("[Flow] 对话段 " .. p.id .. "（" .. tostring(p.lines) .. "）")
+        DialogueUI.ShowDialogue(dlg)
+    end
+end
+
+--- 选择结果（规则层：按段落表 effect 处理数据，表现层不碰数据）
+---@param p table 段落定义
+---@param key string 选择键
+function OnChoiceMade(p, key)
+    if p.effect == "no_belief" then
+        -- 开场三选：不计信念，只记录元叙事钩子（《02》；结局后对照回放）
+        data_.flags.open_choice = key
+        print("[Flow] 开场选择已记录 flags.open_choice = " .. key)
+    elseif p.beliefMap ~= nil and p.beliefMap[key] ~= nil then
+        -- 预留：后续选择段按段落表 beliefMap 加信念（S4 无面鬼互动等）
+        local axis = p.beliefMap[key]
+        if data_.belief[axis] ~= nil then
+            data_.belief[axis] = data_.belief[axis] + 1
+        end
+    end
+    CompleteParagraph({ done = true })
+end
+
+--- 玩法模块上报"拾取一个标记点"（规则：累计 → 达标返回统一完成结果）
+---@param key string 标记键（五行键或交互点键）
 function FlowController.OnBlossomCollected(key)
     if state_ == nil or state_.paragraph == nil then return end
+    if DialogueUI.IsOpen() then return end   -- 对话中不收（避免与对话推进串台）
     local p = state_.paragraph
     if p.type ~= "explore" then return end
 
@@ -166,6 +219,7 @@ end
 function FlowController.DebugForceComplete()
     if state_ == nil or state_.paragraph == nil then return end
     print("[Flow] 调试：强制完成段落 " .. state_.paragraph.id)
+    DialogueUI.Hide()   -- 若对话开着，先关闭（避免回调悬空）
     CompleteParagraph({ done = true })
 end
 

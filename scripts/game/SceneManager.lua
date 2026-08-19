@@ -143,6 +143,16 @@ function BuildChaoyangGukou()
         WhiteBox.BlossomMarker(scene_, spot.pos, spot.key, spot.rgb)
     end
 
+    -- 守桃老人（S2 对话 NPC，白模：衣袍圆柱 + 头颅球 + 手杖）
+    local oldManPos = Vector3(6, 0, -6)
+    WhiteBox.Cylinder(scene_, "OldMan", Vector3(oldManPos.x, 0.75, oldManPos.z), 0.7, 1.5,
+        { 0.46, 0.38, 0.32 })
+    WhiteBox.Sphere(scene_, "OldManHead", Vector3(oldManPos.x, 1.75, oldManPos.z), 0.4,
+        { 0.90, 0.82, 0.74 })
+    -- 交互点（走近触发对话：P02 完成条件，节点名 Int_oldman）
+    WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
+        { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true })
+
     -- 边界墙
     WhiteBox.BoundaryWalls(scene_, 19.5, 3.0, { 0.55, 0.42, 0.32 })
 

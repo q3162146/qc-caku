@@ -180,11 +180,14 @@ function PlayerController_HandleCollisionStart(eventType, eventData)
     end
     if other == nil then return end
 
-    -- 按节点名识别桃花标记：Blossom_<key>
+    -- 按节点名识别标记：Blossom_<key>（桃花收集）/ Int_<key>（交互点，如走近守桃老人）
     local key = string.match(other.name, "^Blossom_(%w+)$")
+    if key == nil then
+        key = string.match(other.name, "^Int_(%w+)$")
+    end
     if key == nil then return end
 
-    print("[PlayerController] 拾取桃花: " .. key)
+    print("[PlayerController] 拾取标记: " .. key)
     other:Remove()
 
     if blossomHandler_ ~= nil then
