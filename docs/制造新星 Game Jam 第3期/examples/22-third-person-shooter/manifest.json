@@ -1,0 +1,12 @@
+{
+  "name": "第三人称射击游戏",
+  "description": "多人TPS游戏示例",
+  "copyAll": true,
+  "includes": [
+    "**/*.lua",
+    "**/*.fsm", 
+    "**/*.blendspace"
+  ],
+  "targetDir": "scripts",
+  "note": "整个目录复制到 scripts/，包括 FSM/ 子目录"
+}

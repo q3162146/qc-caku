@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://urhox.dev/schemas/settings.schema.json",
+  "title": "UrhoX Settings Configuration",
+  "description": "UrhoX 设置配置文件 (settings.json)，定义引擎、CDN、构建、运行时等设置",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema 引用"
+    },
+    "sources": {
+      "type": "object",
+      "description": "资源来源配置。定义不同来源的版本和 CDN 地址",
+      "properties": {
+        "engine": {
+          "$ref": "#/$defs/sourceConfig",
+          "description": "引擎资源配置"
+        },
+        "official": {
+          "$ref": "#/$defs/sourceConfig",
+          "description": "官方公共资源配置"
+        },
+        "project": {
+          "$ref": "#/$defs/sourceConfigSimple",
+          "description": "项目本地资源配置（通常只需 base_url）"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/sourceConfig",
+        "description": "自定义资源来源（如 pub-xxx 社区资源、corp 内部资源）"
+      }
+    },
+    "build": {
+      "type": "object",
+      "description": "构建配置",
+      "properties": {
+        "generate_fs_path": {
+          "type": "boolean",
+          "description": "是否生成 fs_path（虚拟文件系统路径）",
+          "default": true
+        },
+        "output_dir": {
+          "type": "string",
+          "description": "输出目录（默认）",
+          "default": "dist",
+          "examples": ["dist", "build/output"]
+        },
+        "asset_dirs": {
+          "type": "array",
+          "description": "资源检索根目录列表（构建时扫描、运行时加载）。groups 中的本地路径相对于这些目录匹配",
+          "items": {
+            "type": "string"
+          },
+          "default": ["."],
+          "examples": [["assets", "scripts"], ["Assets"]]
+        },
+        "asset_ignores": {
+          "type": "array",
+          "description": "资源忽略规则（glob 模式，相对于项目根目录的完整路径）",
+          "items": {
+            "type": "string",
+            "description": "Glob 模式，支持 *, **, ?, [seq] 等通配符"
+          },
+          "examples": [
+            ["assets/Editor/**", "assets/Temp/**", "scripts/test/**"]
+          ]
+        },
+        "tags": {
+          "type": "object",
+          "description": "版本标签配置。构建时生成 {tag}.json 文件",
+          "additionalProperties": {
+            "type": "string",
+            "description": "版本模式。'auto' = 当前构建版本，'x.y.z' = 固定版本，'x.x.x' = 匹配模式"
+          },
+          "examples": [
+            {
+              "latest": "auto",
+              "stable": "1.0.0",
+              "1.x.x": "auto"
+            }
+          ]
+        }
+      },
+      "patternProperties": {
+        "^.+@(android|ios|web|pc|linux|macos|windows)$": {
+          "description": "平台特化配置，使用 @platform 后缀覆盖默认值"
+        }
+      },
+      "additionalProperties": true
+    },
+    "upload": {
+      "type": "object",
+      "description": "上传配置（待定）",
+      "additionalProperties": true
+    },
+    "runtime": {
+      "type": "object",
+      "description": "运行时配置（待定）",
+      "additionalProperties": true
+    },
+    "@runtime": {
+      "type": "object",
+      "description": "运行时配置。此字段内容会被提升到顶层后作为运行时资源输出（settings.json）",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "sourceConfig": {
+      "type": "object",
+      "description": "资源来源配置",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "description": "版本标签（如 latest, stable, 1.x.x）。运行时请求 {base_url}/{tag}.json",
+          "examples": ["latest", "stable", "1.x.x"]
+        },
+        "version": {
+          "type": "string",
+          "description": "精确版本号（如 1.2.5）。运行时请求 {base_url}/{version}/version.json",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "examples": ["1.0.0", "1.2.5"]
+        },
+        "base_url": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "CDN 地址",
+              "examples": ["https://cdn.example.com/engine/"]
+            },
+            {
+              "type": "array",
+              "description": "CDN 地址列表（fallback/负载均衡）",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "examples": [
+                [
+                  "https://cdn1.example.com/resource/",
+                  "https://cdn2.example.com/resource/"
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourceConfigSimple": {
+      "type": "object",
+      "description": "简化的资源来源配置（无 tag/version）",
+      "properties": {
+        "base_url": {
+          "type": "string",
+          "description": "资源基础路径",
+          "examples": ["assets/"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "examples": [
+    {
+      "sources": {
+        "engine": {
+          "tag": "1.x.x",
+          "base_url": "https://cdn.example.com/engine/"
+        },
+        "official": {
+          "tag": "latest",
+          "base_url": "https://cdn.example.com/official/"
+        },
+        "project": {
+          "base_url": "assets/"
+        }
+      },
+      "build": {
+        "generate_fs_path": true,
+        "output_dir": "dist",
+        "asset_dirs": ["Assets"],
+        "asset_ignores": [],
+        "tags": {
+          "latest": "auto",
+          "stable": "1.0.0"
+        }
+      }
+    }
+  ]
+}

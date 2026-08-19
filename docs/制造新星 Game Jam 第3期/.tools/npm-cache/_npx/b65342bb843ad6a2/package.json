@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@taptap/maker": "^0.0.30"
+  },
+  "_npx": {
+    "packages": [
+      "@taptap/maker"
+    ]
+  }
+}

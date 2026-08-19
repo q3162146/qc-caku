@@ -1,0 +1,24 @@
+{
+  "exclude_skills": {
+    "win32": [
+      "anim-info",
+      "blender",
+      "convert-panorama",
+      "import-fbx",
+      "import-glb",
+      "model-info",
+      "run-lua-headless",
+      "run-lua-validate"
+    ],
+    "darwin": [
+      "anim-info",
+      "blender",
+      "convert-panorama",
+      "import-fbx",
+      "import-glb",
+      "model-info",
+      "run-lua-headless",
+      "run-lua-validate"
+    ]
+  }
+}

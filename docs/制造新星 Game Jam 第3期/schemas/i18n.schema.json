@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://urhox.dev/schemas/i18n.schema.json",
+  "title": "UrhoX i18n Configuration",
+  "description": "自动化多语言提取的核心配置，定义提取规则、排除规则和翻译输出选项。",
+  "type": "object",
+  "required": ["source_lang", "target_langs"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema 引用"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "是否启用 i18n 构建步骤。false 时跳过整个国际化流程。",
+      "default": true
+    },
+    "source_lang": {
+      "type": "string",
+      "description": "源语言代码（如 zh_CN, en）",
+      "default": "zh_CN"
+    },
+    "target_langs": {
+      "type": "array",
+      "description": "目标语言代码数组",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "examples": [["en", "ja", "ko"]]
+    },
+    "extract_rules": {
+      "type": "array",
+      "description": "逐行正则提取规则。每条规则的 pattern 对源文件每一行做正则匹配，group 指定的捕获组即为提取的可翻译字符串。",
+      "items": {
+        "type": "object",
+        "required": ["name", "pattern"],
+        "properties": {
+          "name": { "type": "string", "description": "规则标识名" },
+          "pattern": { "type": "string", "description": "正则表达式，必须包含捕获组" },
+          "group": { "type": "integer", "description": "捕获组索引", "default": 1 },
+          "file_exts": {
+            "type": "array",
+            "description": "仅对指定文件类型生效（空 = 全部）",
+            "items": { "type": "string" },
+            "default": []
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "function_excludes": {
+      "type": "array",
+      "description": "排除的函数名，这些函数的字符串参数不会被提取（仅脚本）",
+      "items": { "type": "string" },
+      "examples": [["SetName", "GetResource", "print", "log:Write", "_raw"]],
+      "default": []
+    },
+    "context_excludes": {
+      "type": "array",
+      "description": "基于同行上下文的正则排除规则",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "prefix_pattern": { "type": "string", "description": "匹配同行中字符串之前的文本" },
+          "suffix_pattern": { "type": "string", "description": "匹配同行中字符串之后的文本" },
+          "file_exts": {
+            "type": "array",
+            "description": "仅对指定文件类型生效（空 = 全部）",
+            "items": { "type": "string" },
+            "default": []
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "content_excludes": {
+      "type": "array",
+      "description": "按提取内容匹配的排除规则",
+      "items": {
+        "type": "object",
+        "required": ["name", "pattern"],
+        "properties": {
+          "name": { "type": "string" },
+          "pattern": { "type": "string" },
+          "file_exts": {
+            "type": "array",
+            "description": "仅对指定文件类型生效（空 = 全部）",
+            "items": { "type": "string" },
+            "default": []
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "file_exts": {
+      "type": "array",
+      "description": "需要扫描的文件类型",
+      "items": { "type": "string" },
+      "default": [".lua", ".json", ".xml"]
+    },
+    "ignore_files": {
+      "type": "array",
+      "description": "跳过的文件 glob 模式（相对项目根目录）",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "code": {
+      "type": "object",
+      "description": "代码语言相关的 i18n 设置",
+      "properties": {
+        "deferred_tr": {
+          "type": "boolean",
+          "description": "false（默认）：即时翻译求值，所有字符串包裹 _tr()，在代码执行到该处时立即翻译。true：延迟翻译求值，独立字符串替换为纯 hash key（\"t_xxx\"），由渲染 hook 在呈现时翻译，支持运行时即时切语言。凡涉及字符串拼接的强制即时求值。",
+          "default": false
+        },
+        "concat_to_format": { "type": "boolean", "description": "将 .. 拼接转换为 {N} 占位符", "default": true },
+        "ignore_comments": {
+          "type": "object",
+          "description": "按文件扩展名指定 i18n 忽略注释格式",
+          "properties": {
+            ".lua": { "type": "string", "default": "-- i18n-ignore" }
+          },
+          "additionalProperties": { "type": "string" },
+          "default": { ".lua": "-- i18n-ignore" }
+        }
+      },
+      "additionalProperties": false,
+      "default": {}
+    },
+    "untranslated": {
+      "type": "object",
+      "description": "未翻译内容的回退策略",
+      "properties": {
+        "fallback": {
+          "type": "string",
+          "description": "key: 产物翻译表中缺省该条目，Tr 返回传入的 hash key；source: 产物翻译表中填充原文",
+          "enum": ["key", "source"],
+          "default": "key"
+        }
+      },
+      "additionalProperties": false,
+      "default": {}
+    },
+    "lang_to_display": {
+      "type": "object",
+      "description": "语言代码到显示名的映射，用于语言选择 UI。如 {\"zh_CN\": \"简体中文\", \"en\": \"English\"}。未配置时使用内置默认值。",
+      "additionalProperties": { "type": "string" }
+    },
+    "translations_dir": {
+      "type": "string",
+      "description": "翻译文件目录（相对 .project/），如 ../i18n",
+      "default": "../i18n"
+    }
+  },
+  "additionalProperties": false
+}

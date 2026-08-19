@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://urhox.dev/schemas/project.schema.json",
+  "title": "UrhoX Project Configuration",
+  "description": "UrhoX 项目主配置文件 (project.json)，定义项目的基本信息和标识",
+  "type": "object",
+  "required": ["project_id", "name", "version", "author"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema 引用"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "项目唯一标识符（不可修改），格式：p_{随机字符串}，创建时由服务端生成",
+      "pattern": "^p_[a-zA-Z0-9]+$",
+      "examples": ["p_a2sf", "p_abc123"]
+    },
+    "name": {
+      "type": "string",
+      "description": "项目显示名称",
+      "minLength": 1,
+      "maxLength": 100,
+      "examples": ["太空射击游戏", "My Awesome Game"]
+    },
+    "version": {
+      "type": "string",
+      "description": "语义化版本号（遵循 semver），支持 {x} 自增占位符。例如 '1.0.{x}' 每次构建自动递增",
+      "pattern": "^\\d+\\.\\d+\\.(\\d+|\\{x\\})$",
+      "examples": ["1.0.0", "1.0.{x}", "2.1.5"]
+    },
+    "entry": {
+      "type": "string",
+      "description": "统一脚本入口。纯前端或不区分前后端的场合使用（覆盖resource.json）",
+      "examples": ["main.lua"]
+    },
+    "entry@client": {
+      "type": "string",
+      "description": "客户端脚本入口（可选）。构建 client manifest 时优先使用此入口，缺省时使用 entry（覆盖resource.json）",
+      "examples": ["client_main.lua"]
+    },
+    "entry@server": {
+      "type": "string",
+      "description": "服务端脚本入口（可选）。构建 server manifest 时优先使用此入口，缺省时使用 entry（覆盖resource.json）",
+      "examples": ["server_main.lua"]
+    },
+    "author": {
+      "type": "object",
+      "description": "作者信息",
+      "required": ["name", "id"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "作者/工作室显示名称",
+          "minLength": 1,
+          "examples": ["游戏工作室", "John Doe"]
+        },
+        "id": {
+          "type": "string",
+          "description": "作者唯一标识符",
+          "pattern": "^[a-zA-Z0-9_]+$",
+          "examples": ["studio_001", "john_doe"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "description": {
+      "type": "object",
+      "description": "项目描述",
+      "properties": {
+        "short": {
+          "type": "string",
+          "description": "简短描述（一句话）",
+          "maxLength": 200,
+          "examples": ["一款精彩的太空射击游戏"]
+        },
+        "long": {
+          "type": "string",
+          "description": "详细描述",
+          "maxLength": 2000,
+          "examples": ["在浩瀚的宇宙中，驾驶你的战机，消灭敌人，拯救银河系！"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "@runtime": {
+      "type": "object",
+      "description": "运行时配置。此字段内容会被提升到顶层后作为运行时资源输出（project.json）",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "project_id": "p_a2sf",
+      "name": "太空射击游戏",
+      "version": "1.0.0",
+      "author": {
+        "name": "游戏工作室",
+        "id": "studio_001"
+      },
+      "description": {
+        "short": "一款精彩的太空射击游戏",
+        "long": "在浩瀚的宇宙中，驾驶你的战机，消灭敌人，拯救银河系！"
+      }
+    }
+  ]
+}

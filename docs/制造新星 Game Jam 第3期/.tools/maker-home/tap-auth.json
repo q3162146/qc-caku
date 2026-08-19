@@ -1,0 +1,12 @@
+{
+  "kid": "1/Ai1xOI0h2kdek79PnBMcFo-oeMrcwfT5GEeX9GAV_iDrktu6bLTsmNMeb0jjNobQGoAZ9eFX8H_oCjHraV9zI6BEhpDH3i0Y0iMRB8EsZOxDmlcVaDP2mXfdRXfEtPCe7256oRA4cWA_nu1EczYVSyzmgLnS0g3ra0vq-pkhSn9hlcpZZ7j_wpUaQcWVcS7q5AquZmh3VjBzAJ1QtNAn0mNulzkF8AwRlUR5A5gyzSei4tULHXK7EihZFVhlN-cjpeCNasfKOpCpnzHndwTKlwFnsCpjSxXqfmxABzY4DumqNTiaeemOAQPzG8W-VRVALSU4GCq-rUSANXneA-hVGQ",
+  "mac_key": "3ihqIasySCZRlQWIOJuTSdxyZ3NbImcJk0LM7K6Z",
+  "token_type": "mac",
+  "mac_algorithm": "hmac-sha-1",
+  "raw": {
+    "kid": "1/Ai1xOI0h2kdek79PnBMcFo-oeMrcwfT5GEeX9GAV_iDrktu6bLTsmNMeb0jjNobQGoAZ9eFX8H_oCjHraV9zI6BEhpDH3i0Y0iMRB8EsZOxDmlcVaDP2mXfdRXfEtPCe7256oRA4cWA_nu1EczYVSyzmgLnS0g3ra0vq-pkhSn9hlcpZZ7j_wpUaQcWVcS7q5AquZmh3VjBzAJ1QtNAn0mNulzkF8AwRlUR5A5gyzSei4tULHXK7EihZFVhlN-cjpeCNasfKOpCpnzHndwTKlwFnsCpjSxXqfmxABzY4DumqNTiaeemOAQPzG8W-VRVALSU4GCq-rUSANXneA-hVGQ",
+    "mac_key": "3ihqIasySCZRlQWIOJuTSdxyZ3NbImcJk0LM7K6Z",
+    "mac_algorithm": "hmac-sha-1"
+  },
+  "saved_at": "2026-08-19T16:48:45.288Z"
+}
