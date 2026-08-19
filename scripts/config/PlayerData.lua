@@ -69,12 +69,15 @@ function PlayerData.Sanitize(raw)
         end
     end
 
-    -- 数组型字段：memories / journal / endingsSeen
+    -- map 型字段：memories / journal / endingsSeen
     for _, field in ipairs({ "memories", "journal", "endingsSeen" }) do
         if type(raw[field]) == "table" then
             local copy = {}
-            for _, v in ipairs(raw[field]) do
-                table.insert(copy, v)
+            for k, v in pairs(raw[field]) do
+                if (type(k) == "string" or type(k) == "number")
+                    and (type(v) == "boolean" or type(v) == "string" or type(v) == "number") then
+                    copy[k] = v
+                end
             end
             data[field] = copy
         end

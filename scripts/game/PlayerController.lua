@@ -10,6 +10,8 @@
 -- ============================================================================
 
 local ThirdPersonCamera = require "urhox-libs.Camera.ThirdPersonCamera"
+local InputManager = require "game.InputManager"
+local WhiteBox = require "game.WhiteBox"
 
 local PlayerController = {}
 
@@ -54,7 +56,8 @@ function PlayerController.Create(scene)
 
     -- 刚体（运动学角色：KCC 驱动，RigidBody 只负责碰撞事件）
     local body = playerNode_:CreateComponent("RigidBody")
-    body:SetCollisionLayerAndMask(CollisionLayerCharacter, CollisionMaskCharacter)
+    body:SetCollisionLayerAndMask(WhiteBox.LAYER_PLAYER,
+        WhiteBox.LAYER_GROUND | WhiteBox.LAYER_TRIGGER)
     body:SetMass(1)
     body:SetLinearFactor(Vector3.ZERO)
     body:SetAngularFactor(Vector3.ZERO)
@@ -66,7 +69,7 @@ function PlayerController.Create(scene)
 
     -- 运动学角色控制器
     local kcc = playerNode_:CreateComponent("KinematicCharacterController")
-    kcc:SetCollisionLayerAndMask(CollisionLayerKinematic, CollisionMaskKinematic)
+    kcc:SetCollisionLayerAndMask(WhiteBox.LAYER_PLAYER, WhiteBox.LAYER_GROUND)
     kcc:SetJumpSpeed(8.0)
 
     -- 角色组件（只处理物理移动）
@@ -87,7 +90,7 @@ function PlayerController.Create(scene)
     renderer:SetViewport(0, Viewport:new(scene, tpCamera_:GetCamera()))
 
     -- 鼠标相对模式（视角控制）
-    input.mouseMode = MM_RELATIVE
+    InputManager.SetRelativeMouseMode()
 
     -- 全局碰撞事件：桃花收集（一次性触发）
     SubscribeToEvent("PhysicsCollisionStart", "PlayerController_HandleCollisionStart")
@@ -108,7 +111,7 @@ end
 ---@param position Vector3
 function PlayerController.SetPosition(position)
     if playerNode_ ~= nil and position ~= nil then
-        playerNode_.position = Vector3(position.x, position.y + 0.5, position.z)
+        playerNode_.position = Vector3(position.x, 0.6, position.z)
     end
 end
 
@@ -124,24 +127,25 @@ function PlayerController.Update(timeStep)
     if character_ == nil then return end
 
     -- 鼠标视角
-    yaw_ = yaw_ + input.mouseMoveX * MOUSE_SENSITIVITY
-    pitch_ = pitch_ + input.mouseMoveY * MOUSE_SENSITIVITY
+    local mouseX, mouseY = InputManager.GetMouseDelta()
+    yaw_ = yaw_ + mouseX * MOUSE_SENSITIVITY
+    pitch_ = pitch_ + mouseY * MOUSE_SENSITIVITY
     pitch_ = Clamp(pitch_, -PITCH_LIMIT, PITCH_LIMIT)
     character_.controls.yaw = yaw_
     character_.controls.pitch = pitch_
 
     -- 移动（WASD / 方向键），使用枚举
     local controls = character_.controls
-    controls:Set(CTRL_FORWARD, input:GetKeyDown(KEY_W) or input:GetKeyDown(KEY_UP))
-    controls:Set(CTRL_BACK,    input:GetKeyDown(KEY_S) or input:GetKeyDown(KEY_DOWN))
-    controls:Set(CTRL_LEFT,    input:GetKeyDown(KEY_A) or input:GetKeyDown(KEY_LEFT))
-    controls:Set(CTRL_RIGHT,   input:GetKeyDown(KEY_D) or input:GetKeyDown(KEY_RIGHT))
+    controls:Set(CTRL_FORWARD, InputManager.IsKeyDown(KEY_W) or InputManager.IsKeyDown(KEY_UP))
+    controls:Set(CTRL_BACK,    InputManager.IsKeyDown(KEY_S) or InputManager.IsKeyDown(KEY_DOWN))
+    controls:Set(CTRL_LEFT,    InputManager.IsKeyDown(KEY_A) or InputManager.IsKeyDown(KEY_LEFT))
+    controls:Set(CTRL_RIGHT,   InputManager.IsKeyDown(KEY_D) or InputManager.IsKeyDown(KEY_RIGHT))
 
     -- 跑步（Shift）
-    controls:Set(CTRL_RUN, input:GetKeyDown(KEY_LSHIFT) or input:GetKeyDown(KEY_RSHIFT))
+    controls:Set(CTRL_RUN, InputManager.IsKeyDown(KEY_LSHIFT) or InputManager.IsKeyDown(KEY_RSHIFT))
 
     -- 跳跃（空格，边沿触发；仅着地时）
-    if character_.onGround and input:GetKeyPress(KEY_SPACE) then
+    if character_.onGround and InputManager.IsKeyPress(KEY_SPACE) then
         controls:Set(CTRL_JUMP, true)
     end
 end

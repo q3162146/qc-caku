@@ -80,11 +80,11 @@ function SceneManager.LoadScene(sceneName)
     -- 构建白模
     local spawn = nil
     if sceneName == "chaoyang_gukou" then
-        spawn = BuildChaoyangGukou()
+        spawn = BuildChaoyangGukou(sceneRoot_)
     elseif sceneName == "gu_nei_taolin" then
-        spawn = BuildGuNeiTaoLin()
+        spawn = BuildGuNeiTaoLin(sceneRoot_)
     elseif sceneName == "luoshui_yinshan" then
-        spawn = BuildLuoShuiYinShan()
+        spawn = BuildLuoShuiYinShan(sceneRoot_)
     end
 
     -- 玩家回到出生点
@@ -120,7 +120,8 @@ end
 --- ============================================================================
 --- 场景 1：朝阳谷口（明亮，桃花漫山）
 --- ============================================================================
-function BuildChaoyangGukou()
+function BuildChaoyangGukou(root)
+    local scene_ = root
     -- 地面：暖色土黄
     WhiteBox.Ground(scene_, "Ground", 40, 40, { 0.82, 0.68, 0.52 })
 
@@ -151,7 +152,8 @@ function BuildChaoyangGukou()
         { 0.90, 0.82, 0.74 })
     -- 交互点（走近触发对话：P02 完成条件，节点名 Int_oldman）
     WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
-        { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true })
+        { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true,
+            layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
 
     -- 边界墙
     WhiteBox.BoundaryWalls(scene_, 19.5, 3.0, { 0.55, 0.42, 0.32 })
@@ -163,7 +165,8 @@ end
 --- ============================================================================
 --- 场景 2：谷内桃林（清幽）
 --- ============================================================================
-function BuildGuNeiTaoLin()
+function BuildGuNeiTaoLin(root)
+    local scene_ = root
     -- 地面：偏绿土色
     WhiteBox.Ground(scene_, "Ground", 36, 36, { 0.62, 0.62, 0.48 })
 
@@ -200,7 +203,8 @@ end
 --- ============================================================================
 --- 场景 3：洛水阴山（异域/雾霭）
 --- ============================================================================
-function BuildLuoShuiYinShan()
+function BuildLuoShuiYinShan(root)
+    local scene_ = root
     -- 地面：暗色石板
     WhiteBox.Ground(scene_, "Ground", 36, 36, { 0.32, 0.32, 0.38 })
 

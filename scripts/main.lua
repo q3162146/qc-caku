@@ -21,6 +21,7 @@ local PlayerData = require "config.PlayerData"
 local Chapters = require "config.Chapters"
 local SceneManager = require "game.SceneManager"
 local PlayerController = require "game.PlayerController"
+local InputManager = require "game.InputManager"
 local FlowController = require "flow.FlowController"
 local DialogueUI = require "ui.DialogueUI"
 local UI = require "urhox-libs/UI"
@@ -35,11 +36,11 @@ local scene_ = nil
 --- 读取并解析 .project/settings.json
 ---@return table|nil settings, string|nil err
 local function ReadProjectSettings()
-    if not cache:Exists(".project/settings.json") then
+    if not fileSystem:FileExists(".project/settings.json") then
         return nil, "missing"
     end
-    local file = cache:GetFile(".project/settings.json")
-    if file == nil then
+    local file = File(".project/settings.json", FILE_READ)
+    if file == nil or not file:IsOpen() then
         return nil, "unreadable"
     end
     local content = file:ReadString()
@@ -60,21 +61,20 @@ end
 function ValidateSinglePlayerConfig()
     local settings, err = ReadProjectSettings()
     if settings == nil then
-        print("[main] 警告：.project/settings.json " .. tostring(err)
-            .. "，跳过单机校验（本地开发）")
-        return true
+        print("[main] 错误：.project/settings.json " .. tostring(err) .. "，退出")
+        engine:Exit()
+        return false
     end
 
-    -- @runtime.multiplayer（构建期源配置）或顶层 multiplayer（运行时提升后）都检查
-    local mp = settings.multiplayer
-    if type(settings["@runtime"]) == "table" and type(settings["@runtime"].multiplayer) == "table" then
-        mp = settings["@runtime"].multiplayer
+    local runtime = settings["@runtime"]
+    local mp = type(runtime) == "table" and runtime.multiplayer or nil
+    if type(mp) ~= "table" or type(mp.enabled) ~= "boolean" then
+        print("[main] 错误：缺少明确的 @runtime.multiplayer.enabled，退出")
+        engine:Exit()
+        return false
     end
-
-    local enabled = (type(mp) == "table") and (mp.enabled == true)
-    if enabled then
-        print("[main] 错误：multiplayer.enabled == true（多人模式），"
-            .. "本作必须为单机模式，退出")
+    if mp.enabled ~= false then
+        print("[main] 错误：multiplayer.enabled 必须为 false，退出")
         engine:Exit()
         return false
     end
@@ -119,11 +119,12 @@ function Start()
         return
     end
 
-    -- 2. UI 系统（对话/选项/字幕统一用 urhox-libs/UI）
+    -- 2. 输入抽象层
+    InputManager.Initialize({ touchSensitivity = 2 })
+
+    -- 3. UI 系统（对话/选项/字幕统一用 urhox-libs/UI）
     UI.Init({
-        fonts = {
-            { family = "sans", weights = { normal = "Fonts/MiSans-Regular.ttf" } },
-        },
+        theme = "default-dark",
         scale = UI.Scale.DEFAULT,
     })
 
@@ -137,7 +138,7 @@ function Start()
     FlowController.Init(data)
     FlowController.Start()
 
-    -- 5. 事件订阅
+    -- 6. 事件订阅
     SubscribeToEvent("Update", "HandleUpdate")
     SubscribeToEvent("PostUpdate", "HandlePostUpdate")
 
@@ -147,6 +148,7 @@ function Start()
 end
 
 function Stop()
+    InputManager.Shutdown()
     UI.Shutdown()
     print("[main] 停止")
 end
@@ -164,22 +166,22 @@ function HandleUpdate(eventType, eventData)
     end
 
     -- 调试快捷键
-    if input:GetKeyPress(KEY_F5) then
+    if InputManager.IsKeyPress(KEY_F5) then
         FlowController.DebugForceComplete()
     end
-    if input:GetKeyPress(KEY_F2) then
+    if InputManager.IsKeyPress(KEY_F2) then
         print("[main] 调试：直切场景 chaoyang_gukou（流程状态不变）")
         SceneManager.LoadScene("chaoyang_gukou")
     end
-    if input:GetKeyPress(KEY_F3) then
+    if InputManager.IsKeyPress(KEY_F3) then
         print("[main] 调试：直切场景 gu_nei_taolin（流程状态不变）")
         SceneManager.LoadScene("gu_nei_taolin")
     end
-    if input:GetKeyPress(KEY_F4) then
+    if InputManager.IsKeyPress(KEY_F4) then
         print("[main] 调试：直切场景 luoshui_yinshan（流程状态不变）")
         SceneManager.LoadScene("luoshui_yinshan")
     end
-    if input:GetKeyPress(KEY_ESCAPE) then
+    if InputManager.IsKeyPress(KEY_ESCAPE) then
         engine:Exit()
     end
 end

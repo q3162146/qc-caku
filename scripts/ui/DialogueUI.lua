@@ -8,6 +8,7 @@
 -- ============================================================================
 
 local UI = require "urhox-libs/UI"
+local InputManager = require "game.InputManager"
 
 local DialogueUI = {}
 
@@ -64,7 +65,7 @@ end
 function DialogueUI.HandleInput()
     if not open_ or state_ == nil then return end
     if state_.phase ~= "text" then return end
-    if input:GetKeyPress(KEY_SPACE) or input:GetKeyPress(KEY_RETURN) then
+    if InputManager.IsKeyPress(KEY_SPACE) or InputManager.IsKeyPress(KEY_RETURN) then
         AdvanceText()
     end
 end

@@ -193,10 +193,12 @@ function CompleteParagraph(result)
     if result.flag then
         data_.flags[result.flag] = true
     end
-    if result.done ~= false then
-        print("[Flow] 段落 " .. p.id .. " 完成 | 信念(重逢/放手/传说) = "
-            .. data_.belief.reunion .. "/" .. data_.belief.release .. "/" .. data_.belief.legend)
+    if result.done == false then
+        print("[Flow] 段落 " .. p.id .. " 尚未完成，等待玩法模块继续")
+        return
     end
+    print("[Flow] 段落 " .. p.id .. " 完成 | 信念(重逢/放手/传说) = "
+        .. data_.belief.reunion .. "/" .. data_.belief.release .. "/" .. data_.belief.legend)
 
     -- 推进：显式 next 优先，否则用段落表 next
     local nextId = result.next or p.next

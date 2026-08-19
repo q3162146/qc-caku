@@ -1,66 +1,59 @@
-<\!-- RECOVERY INSTRUCTIONS -->
-<\!-- 新会话 AI 读到此文件时： -->
-<\!-- 0. CLAUDE.md 已自动注入 → 已知当前状态和关键避雷 -->
-<\!-- 1. 读取本文件 → 恢复项目上下文 -->
-<\!-- 2. 读取 docs/persona.md → 加载助手人格 + 用户偏好 -->
-<\!-- 3. 如果记忆文件缺失 → 读取 docs/memory-system-seed.md 重新部署 -->
-<\!-- END RECOVERY INSTRUCTIONS -->
+<!-- RECOVERY INSTRUCTIONS -->
+<!-- 新会话 AI 读到此文件时先读取 CLAUDE.md、本文件和 docs/persona.md。 -->
+<!-- END RECOVERY INSTRUCTIONS -->
 
 # 项目记忆索引
 
-项目：[项目名]
-当前版本：[版本号]
-简述：[一句话描述]
-最后巩固：[日期]
+项目：桃素洛无幽·素女篇
+当前版本：0.1.0
+简述：TapTap 制造 × Seedance 主题赛单机叙事游戏的 3D 白模与段落化流程骨架。
+最后巩固：2026-08-20
 
 ## 项目概况
-- [项目核心信息，如技术栈、架构等]
+- UrhoX Lua 单机项目，唯一入口 `scripts/main.lua`。
+- 三地点白模：朝阳谷口、谷内桃林、洛水阴山。
+- 玩家移动/跳跃/第三人称相机/基础碰撞已接入。
+- 章节数据驱动，当前骨架段落为 `P01→P02→P03→P04~P07→P11→P12→P99`。
 
 ## 关键文件
 | 文件 | 用途 |
 |------|------|
-| [路径] | [说明] |
+| `scripts/main.lua` | 单机校验与唯一入口 |
+| `scripts/game/InputManager.lua` | 输入抽象层 |
+| `scripts/game/PlayerController.lua` | 移动、相机、角色碰撞 |
+| `scripts/game/SceneManager.lua` | 三场景白模和 SceneRoot 生命周期 |
+| `scripts/game/WhiteBox.lua` | 白模几何、材质、碰撞 |
+| `scripts/config/PlayerData.lua` | 固定字段和类型兜底 |
+| `scripts/config/Chapters.lua` | 段落表 |
+| `scripts/flow/FlowController.lua` | 统一结果消费与段落推进 |
+| `screenshots/chaoyang_gukou.png` | 初始白模截图 |
 
 ## 有效决策
-- D-001: [标题]（[版本]）
+- D-001：本轮不接视频、完整存档 IO、正式资产和后续章节。
+- D-002：常规 UI 采用 `urhox-libs/UI`，本轮无 raw NanoVG。
+- D-003：白模挂在 `SceneRoot`，切换整组销毁；玩家出生高度固定为 0.6 米以避免 Vector3 绑定读取异常。
 
 ## 活跃系统契约
 | 契约 | 文件 | 状态 |
 |------|------|------|
+| 单机配置 | `scripts/main.lua` | 已完成，配置异常退出 |
+| PlayerData | `scripts/config/PlayerData.lua` | 骨架完成，含媒体字段 |
+| Chapters | `scripts/config/Chapters.lua` | 当前两章骨架完成 |
+| 完成结果 | `scripts/flow/FlowController.lua` | `done=false` 不推进 |
+| 媒体恢复 | 后续模块 | 未开始 |
 
 ## 避雷清单
-> 踩过的坑，永不再犯。本章节不计入行数上限，严禁压缩/精简。
-- **TodoWrite 必须前置创建，包含完整工作流**。收到任务后第一个动作就是用 TodoWrite 创建 DEV + POST-1/2/3 条目。POST 是记忆存活的唯一入口，跳过 POST = 记忆断裂。
-- **POST 条目禁止删除，只能判定跳过并标注理由**。不做判定就跳过 = 违规。
-- [更多避雷条目在使用中积累]
-
-## TodoWrite 前置模板
-> 本章节不计入行数上限，严禁压缩/精简。
-
-收到非纯讨论任务后，第一个动作用 TodoWrite 创建：
-
-```
-TodoWrite([
-  { content: "DEV: [具体任务]", status: "in_progress" },
-  { content: "POST-1 更新记忆：CLAUDE.md + memory-index.md + persona.md", status: "pending" },
-  { content: "POST-2 持久化：versions.md + git commit", status: "pending" },
-  { content: "POST-3 同步随行记忆：.agent/memory-runtime/", status: "pending" }
-])
-```
-
-**强制判定**：每个 POST 步骤执行时必须做"执行/跳过"判定，跳过需标注理由（如 `POST-3 [判定跳过: 小调整无跨项目信息]`）。禁止直接删除 POST 条目。
-
-<\!-- 领域扩展：防御记忆（可选，启用后取消注释） -->
-<\!-- ## 抗体清单 -->
-<\!-- > DEV 阶段修改相关模块前必须查阅。本章节不计入行数上限，严禁压缩/精简。 -->
-<\!-- - [AB-XXX] [模块名] 抗体描述（触发版本） -->
-
-<\!-- ## 回归场景库 -->
-<\!-- > REV 阶段审查代码变更时必须扫描。本章节不计入行数上限，严禁压缩/精简。 -->
-<\!-- - [RS-XXX] [触发条件组合] → [现象]（修复版本） -->
+- TodoWrite 必须前置创建并包含 POST-1/2/3。
+- `cache:Exists` 不等于运行时普通文件存在；读取 `.project/settings.json` 用 `fileSystem:FileExists` 与 `File`。
+- 场景内容必须挂到 `SceneRoot`，否则切换后旧碰撞体残留。
+- InputManager 封装所有业务输入访问，业务模块不得直接查询底层 `input`。
+- 验证环境可能缺预编译 shader、音频设备和中文字体；先以 Lua runtime error、场景统计和截图判断业务结果。
 
 ## 最近变更
-- vX.X.X: [变更摘要]
+- v0.1.0：创建单机白模骨架，LSP Error 为空，官方构建成功；运行验证 Lua 错误为 0，节点 24、组件 64；已生成朝阳谷口截图。
 
 ## 下一步
-1. [建议]
+1. 媒体播放器生命周期与断点恢复三步状态机。
+2. P02 真实老人交互玩法。
+3. ch2/ch3/ch4 和终局信念结果。
+4. 正式模型、音频、粒子与中文字体。
