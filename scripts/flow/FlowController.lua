@@ -1,0 +1,184 @@
+-- ============================================================================
+-- flow/FlowController.lua
+-- 最小流程控制器（段落化架构，快速开工包 ④⑧ / 设计文档 §8）
+--
+-- 职责边界：
+--   - 只做"当前在哪一段、完成后去哪一段"（读段落表推进）；
+--   - 玩法模块（本会话为桃花收集）只返回统一完成结果
+--     { done, beliefDelta, unlocked, flag, next, timedOut }；
+--   - 本模块负责把 beliefDelta/unlocked/flag 写入共享 PlayerData，
+--     场景对象不持有任何跨段落状态。
+--
+-- 本会话段落类型：
+--   video   媒体未接入 → 自动完成（打日志跳过，正式接入在演出会话）；
+--   explore 收集完场景标记点即完成（白模玩法闭环演示）；
+--   end     收尾段落 → 按 next 循环（演示闭环）。
+-- ============================================================================
+
+local PlayerData = require "config.PlayerData"
+local Chapters = require "config.Chapters"
+local SceneManager = require "game.SceneManager"
+local PlayerController = require "game.PlayerController"
+
+local FlowController = {}
+
+---@type table|nil
+local data_ = nil          -- 共享 PlayerData（经 Sanitize 清洗）
+---@type table|nil
+local state_ = nil         -- { chapterIndex, paragraphIndex, paragraph, collectCount, collected }
+
+--- 初始化流程控制器（注入清洗后的 PlayerData）
+---@param data table
+function FlowController.Init(data)
+    data_ = data
+end
+
+--- 从第一段开始（演示：ch0/P01）
+function FlowController.Start()
+    if data_ == nil then
+        print("[Flow] 未初始化（缺 PlayerData）")
+        return
+    end
+    state_ = { chapterIndex = 1, paragraphIndex = 1, collected = 0 }
+    PlayerController.SetBlossomHandler(FlowController.OnBlossomCollected)
+    print("[Flow] 流程启动（白模演示）")
+    EnterParagraph()
+end
+
+--- 进入当前段落
+function EnterParagraph()
+    ---@type table|nil
+    local chapter = Chapters[state_.chapterIndex]
+    if chapter == nil then
+        print("[Flow] 章节不存在，流程结束")
+        return
+    end
+    ---@type table|nil
+    local p = chapter.paragraphs[state_.paragraphIndex]
+    if p == nil then
+        print("[Flow] 段落不存在，流程结束")
+        return
+    end
+    state_.paragraph = p
+    state_.collected = 0
+
+    print("[Flow] 进入段落 " .. p.id .. "（" .. p.type .. "）" .. (p.desc or ""))
+
+    -- 段落指定场景 → 切换白模场景
+    if p.scene then
+        SceneManager.LoadScene(p.scene)
+    end
+
+    -- 按类型处理
+    if p.type == "video" then
+        -- 媒体模块未接入：本会话自动完成（正式接入见 media/ 会话）
+        print("[Flow] 视频段落 " .. (p.video or "?") .. " 未接入媒体模块，本会话自动跳过")
+        CompleteParagraph({ done = true })
+    elseif p.type == "explore" then
+        state_.collectCount = p.collectCount or 3
+        print("[Flow] 探索段：收集 " .. state_.collectCount .. " 朵桃花后继续")
+    elseif p.type == "end" then
+        print("[Flow] 收尾段落（白模演示闭环）")
+        CompleteParagraph({ done = true })
+    end
+end
+
+--- 玩法模块上报"拾取一朵桃花"（规则：累计 → 达标返回统一完成结果）
+---@param key string 五行键
+function FlowController.OnBlossomCollected(key)
+    if state_ == nil or state_.paragraph == nil then return end
+    local p = state_.paragraph
+    if p.type ~= "explore" then return end
+
+    -- 数据变化：写入共享 PlayerData（五行桃花 + 札记占位）
+    if data_.blossoms[key] ~= nil then
+        data_.blossoms[key] = true
+    end
+    state_.collected = state_.collected + 1
+    print("[Flow] 桃花进度 " .. state_.collected .. "/" .. state_.collectCount)
+
+    if state_.collected >= state_.collectCount then
+        -- 统一完成结果（玩法模块契约，本会话为演示数据）
+        CompleteParagraph({
+            done = true,
+            beliefDelta = { reunion = 1 },              -- 演示：每次探索完成 +1 重逢信念
+            unlocked = { "journal_demo" },              -- 演示：解锁一条札记
+            flag = p.flag,                              -- 演示：段落级跨段落标记
+        })
+    end
+end
+
+--- 完成当前段落：应用结果 → 按契约推进到下一段
+---@param result table { done, beliefDelta?, unlocked?, flag?, next? }
+function CompleteParagraph(result)
+    if state_ == nil or state_.paragraph == nil then return end
+    local p = state_.paragraph
+    result = result or {}
+
+    -- 应用数据（规则与表现分离：这里只改数据）
+    if result.beliefDelta then
+        for axis, delta in pairs(result.beliefDelta) do
+            if data_.belief[axis] ~= nil and type(delta) == "number" then
+                data_.belief[axis] = data_.belief[axis] + delta
+            end
+        end
+    end
+    if result.unlocked then
+        for _, entry in ipairs(result.unlocked) do
+            data_.memories[entry] = true
+        end
+    end
+    if result.flag then
+        data_.flags[result.flag] = true
+    end
+    if result.done ~= false then
+        print("[Flow] 段落 " .. p.id .. " 完成 | 信念(重逢/放手/传说) = "
+            .. data_.belief.reunion .. "/" .. data_.belief.release .. "/" .. data_.belief.legend)
+    end
+
+    -- 推进：显式 next 优先，否则用段落表 next
+    local nextId = result.next or p.next
+    if nextId == nil then
+        print("[Flow] 段落 " .. p.id .. " 无 next，流程终止")
+        return
+    end
+
+    local ci, pi = FindParagraphIndex(nextId)
+    if ci == nil then
+        print("[Flow] 找不到下一段 " .. tostring(nextId) .. "，流程终止")
+        return
+    end
+    state_.chapterIndex = ci
+    state_.paragraphIndex = pi
+    EnterParagraph()
+end
+
+--- 调试：强制完成当前段落（F5）
+function FlowController.DebugForceComplete()
+    if state_ == nil or state_.paragraph == nil then return end
+    print("[Flow] 调试：强制完成段落 " .. state_.paragraph.id)
+    CompleteParagraph({ done = true })
+end
+
+--- 当前段落 id
+---@return string|nil
+function FlowController.GetCurrentParagraphId()
+    if state_ == nil or state_.paragraph == nil then return nil end
+    return state_.paragraph.id
+end
+
+--- 按段落 id 定位（章索引、段索引）
+---@param id string
+---@return integer|nil, integer|nil
+function FindParagraphIndex(id)
+    for ci, chapter in ipairs(Chapters) do
+        for pi, p in ipairs(chapter.paragraphs) do
+            if p.id == id then
+                return ci, pi
+            end
+        end
+    end
+    return nil, nil
+end
+
+return FlowController
