@@ -10,9 +10,10 @@
 --     场景对象不持有任何跨段落状态。
 --
 -- 本会话段落类型：
---   video   媒体未接入 → 自动完成（打日志跳过，正式接入在演出会话）；
---   explore 收集完场景标记点即完成（白模玩法闭环演示）；
---   end     收尾段落 → 按 next 循环（演示闭环）。
+--   video     媒体未接入 → 自动完成（打日志跳过，正式接入在演出会话）；
+--   dialogue/choice 对话系统未接入 → 自动通过（打日志跳过）；
+--   explore   收集完场景标记点即完成（白模玩法闭环演示）；
+--   end       收尾段落 → 按 next 循环（骨架期演示闭环，ch2~ch4 接入后移除）。
 -- ============================================================================
 
 local PlayerData = require "config.PlayerData"
@@ -74,11 +75,17 @@ function EnterParagraph()
         -- 媒体模块未接入：本会话自动完成（正式接入见 media/ 会话）
         print("[Flow] 视频段落 " .. (p.video or "?") .. " 未接入媒体模块，本会话自动跳过")
         CompleteParagraph({ done = true })
+    elseif p.type == "dialogue" or p.type == "choice" then
+        -- 对话/选择系统未接入：本会话自动通过（正式接入见对话会话）
+        print("[Flow] " .. (p.type == "dialogue" and "对话" or "选择") .. "段落（"
+            .. tostring(p.npc or "?") .. "）未接入对话系统，本会话自动通过")
+        CompleteParagraph({ done = true })
     elseif p.type == "explore" then
         state_.collectCount = p.collectCount or 3
-        print("[Flow] 探索段：收集 " .. state_.collectCount .. " 朵桃花后继续")
+        print("[Flow] 探索段（" .. tostring(p.goal or "") .. "）：收集 "
+            .. state_.collectCount .. " 个标记点后继续")
     elseif p.type == "end" then
-        print("[Flow] 收尾段落（白模演示闭环）")
+        print("[Flow] 收尾段落（骨架期演示闭环）")
         CompleteParagraph({ done = true })
     end
 end
@@ -98,12 +105,14 @@ function FlowController.OnBlossomCollected(key)
     print("[Flow] 桃花进度 " .. state_.collected .. "/" .. state_.collectCount)
 
     if state_.collected >= state_.collectCount then
-        -- 统一完成结果（玩法模块契约，本会话为演示数据）
+        -- 统一完成结果（玩法模块契约）：按段落表数据驱动（《21》§2 on_complete）
+        -- 采花本身不加信念（信念来自记忆印证/终局，见《05》§8）
+        local onComplete = p.on_complete or {}
         CompleteParagraph({
             done = true,
-            beliefDelta = { reunion = 1 },              -- 演示：每次探索完成 +1 重逢信念
-            unlocked = { "journal_demo" },              -- 演示：解锁一条札记
-            flag = p.flag,                              -- 演示：段落级跨段落标记
+            beliefDelta = p.beliefDelta,        -- 段落表声明才有
+            unlocked = onComplete.unlock,       -- 段落表声明才有（如 P11 → {"P12"}）
+            flag = p.flag,                      -- 段落表声明才有（跨段落标记）
         })
     end
 end
