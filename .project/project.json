@@ -7,17 +7,28 @@
   "entry": "main.lua",
   "version": "1.0.0",
   "taptap_publish": {
-    "title": "<game title, required>",
+    "title": "桃素洛无幽·素女篇",
     "description": "<game description>",
-    "category": "<game category: rpg, casual, action, strategy, simulation, trivia, arcade, adventure, card, sports, racing, puzzle, educational, music, word, board>",
+    "category": "adventure",
     "screen_orientation": "landscape",
     "collection_type": "sce",
     "trial_note": "<developer's note>",
-    "app_platforms": "1,2"
+    "app_platforms": "1,2",
+    "developer_id": 273857,
+    "app_id": 912067,
+    "miniapp_id": "tapmce5bh7d8aeyl1u"
   },
   "assets": {
-    "icon": "",
+    "icon": "./game_material/ICON_2026-08-20T01-39-54_01.png",
     "screenshots": [],
-    "promotional_image": ""
+    "promotional_image": "",
+    "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/桃素洛无幽·素女篇/ICON_2026-08-20T01-39-54_01.png"
+  },
+  "metadata": {
+    "updated_at": "2026-08-20T01:40:29.400Z"
+  },
+  "test_qrcode": {
+    "url": "https://tapcode-sce.spark.xd.com/qrcode/m_dsd3_1787190029288.png",
+    "generated_at": "2026-08-20T01:40:29.400Z"
   }
 }
