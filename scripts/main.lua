@@ -56,7 +56,7 @@ local function ReadProjectSettings()
 end
 
 --- 校验单机模式：multiplayer.enabled 必须为 false
---- 配置缺失/损坏 → 本地开发放行（打日志）；明确多人 → 打日志退出
+--- 配置缺失/损坏/多人模式 → 打日志退出
 ---@return boolean
 function ValidateSinglePlayerConfig()
     local settings, err = ReadProjectSettings()
@@ -81,6 +81,14 @@ function ValidateSinglePlayerConfig()
 
     print("[main] 单机模式校验通过（multiplayer.enabled = false）")
     return true
+end
+
+function ConfigurePortraitOrientation()
+    graphics:SetOrientations("Portrait")
+    print("[main] 竖屏方向请求: Portrait | 当前方向配置: "
+        .. tostring(graphics:GetOrientations()))
+    print("[main] 画面尺寸: " .. tostring(graphics:GetWidth()) .. "x"
+        .. tostring(graphics:GetHeight()) .. " | DPR=" .. tostring(graphics:GetDPR()))
 end
 
 -- ============================================================================
@@ -119,6 +127,9 @@ function Start()
         return
     end
 
+    -- 2. 竖屏方向（发布元数据 + 运行时双层实测）
+    ConfigurePortraitOrientation()
+
     -- 2. 输入抽象层
     InputManager.Initialize({ touchSensitivity = 2 })
 
@@ -143,7 +154,7 @@ function Start()
     SubscribeToEvent("PostUpdate", "HandlePostUpdate")
 
     print("=== 启动完成 ===")
-    print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃/对话推进 | 走近守桃老人触发对话")
+    print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | 竖屏 9:16 纵深布局")
     print("调试：F5 强制完成段落 | F2/F3/F4 直切三场景 | ESC 退出")
 end
 

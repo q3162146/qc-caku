@@ -123,29 +123,29 @@ end
 function BuildChaoyangGukou(root)
     local scene_ = root
     -- 地面：暖色土黄
-    WhiteBox.Ground(scene_, "Ground", 40, 40, { 0.82, 0.68, 0.52 })
+    WhiteBox.Ground(scene_, "Ground", 18, 52, { 0.82, 0.68, 0.52 })
 
     -- 无涕桃（中央，略大）
     WhiteBox.PeachTree(scene_, "WutiTao", Vector3(0, 0, 0), 1.6)
 
     -- 素女守望处（小台 + 素色标记）
-    WhiteBox.Box(scene_, "WatchPlatform", Vector3(8, 0.25, 6), Vector3(3, 0.5, 3), { 0.78, 0.80, 0.82 })
-    WhiteBox.Sphere(scene_, "WatchMarker", Vector3(8, 1.2, 6), 0.4, { 0.95, 0.93, 0.88 }, { unlit = true })
+    WhiteBox.Box(scene_, "WatchPlatform", Vector3(5, 0.25, 10), Vector3(3, 0.5, 3), { 0.78, 0.80, 0.82 })
+    WhiteBox.Sphere(scene_, "WatchMarker", Vector3(5, 1.2, 10), 0.4, { 0.95, 0.93, 0.88 }, { unlit = true })
 
     -- 五朵五行桃花（谷口/桃树下/望夫崖/井边/守桃老人屋 的白模占位）
     local blossomSpots = {
-        { key = "wood",   pos = Vector3(-10, 0.6, 8),   rgb = { 0.36, 0.72, 0.38 } },  -- 木（东）
-        { key = "fire",   pos = Vector3(12, 0.6, -6),   rgb = { 0.90, 0.35, 0.30 } },  -- 火（南）
-        { key = "earth",  pos = Vector3(0, 0.6, -12),   rgb = { 0.78, 0.62, 0.36 } },  -- 土（中）
-        { key = "metal",  pos = Vector3(-12, 0.6, -8),  rgb = { 0.82, 0.82, 0.86 } },  -- 金（西）
-        { key = "water",  pos = Vector3(4, 0.6, 12),    rgb = { 0.34, 0.55, 0.85 } },  -- 水（北）
+        { key = "wood",   pos = Vector3(-6, 0.6, 14),   rgb = { 0.36, 0.72, 0.38 } },  -- 木（东）
+        { key = "fire",   pos = Vector3(6, 0.6, -10),   rgb = { 0.90, 0.35, 0.30 } },  -- 火（南）
+        { key = "earth",  pos = Vector3(0, 0.6, -20),   rgb = { 0.78, 0.62, 0.36 } },  -- 土（中）
+        { key = "metal",  pos = Vector3(-6, 0.6, -14),  rgb = { 0.82, 0.82, 0.86 } },  -- 金（西）
+        { key = "water",  pos = Vector3(4, 0.6, 20),    rgb = { 0.34, 0.55, 0.85 } },  -- 水（北）
     }
     for _, spot in ipairs(blossomSpots) do
         WhiteBox.BlossomMarker(scene_, spot.pos, spot.key, spot.rgb)
     end
 
     -- 守桃老人（S2 对话 NPC，白模：衣袍圆柱 + 头颅球 + 手杖）
-    local oldManPos = Vector3(6, 0, -6)
+    local oldManPos = Vector3(3, 0, -16)
     WhiteBox.Cylinder(scene_, "OldMan", Vector3(oldManPos.x, 0.75, oldManPos.z), 0.7, 1.5,
         { 0.46, 0.38, 0.32 })
     WhiteBox.Sphere(scene_, "OldManHead", Vector3(oldManPos.x, 1.75, oldManPos.z), 0.4,
@@ -156,10 +156,10 @@ function BuildChaoyangGukou(root)
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
 
     -- 边界墙
-    WhiteBox.BoundaryWalls(scene_, 19.5, 3.0, { 0.55, 0.42, 0.32 })
+    WhiteBox.BoundaryWalls(scene_, 8.5, 25.5, 3.0, { 0.55, 0.42, 0.32 })
 
     -- 出生点
-    return Vector3(0, 0.1, 10)
+    return Vector3(0, 0.1, 22)
 end
 
 --- ============================================================================
@@ -168,36 +168,36 @@ end
 function BuildGuNeiTaoLin(root)
     local scene_ = root
     -- 地面：偏绿土色
-    WhiteBox.Ground(scene_, "Ground", 36, 36, { 0.62, 0.62, 0.48 })
+    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.62, 0.62, 0.48 })
 
     -- 守桃老人屋（盒屋 + 斜顶）
-    WhiteBox.Box(scene_, "OldManHouse", Vector3(-8, 1.2, -8), Vector3(6, 2.4, 4.5), { 0.66, 0.52, 0.38 })
-    WhiteBox.Box(scene_, "OldManHouseRoof", Vector3(-8, 2.9, -8), Vector3(7, 0.4, 5.5), { 0.52, 0.36, 0.28 })
+    WhiteBox.Box(scene_, "OldManHouse", Vector3(-4, 1.2, -14), Vector3(5, 2.4, 4.5), { 0.66, 0.52, 0.38 })
+    WhiteBox.Box(scene_, "OldManHouseRoof", Vector3(-4, 2.9, -14), Vector3(6, 0.4, 5.5), { 0.52, 0.36, 0.28 })
 
     -- 井（圆台 + 小盒井架）
-    WhiteBox.Cylinder(scene_, "Well", Vector3(-2, 0.4, 6), 1.6, 0.8, { 0.60, 0.58, 0.54 })
-    WhiteBox.Box(scene_, "WellFrame", Vector3(-2, 1.2, 6), Vector3(1.8, 0.3, 1.8), { 0.55, 0.50, 0.45 })
+    WhiteBox.Cylinder(scene_, "Well", Vector3(-2, 0.4, 10), 1.6, 0.8, { 0.60, 0.58, 0.54 })
+    WhiteBox.Box(scene_, "WellFrame", Vector3(-2, 1.2, 10), Vector3(1.8, 0.3, 1.8), { 0.55, 0.50, 0.45 })
 
     -- 桃树群
-    WhiteBox.PeachTree(scene_, "TaoA", Vector3(6, 0, 8), 1.2)
-    WhiteBox.PeachTree(scene_, "TaoB", Vector3(10, 0, 2), 1.0)
-    WhiteBox.PeachTree(scene_, "TaoC", Vector3(-4, 0, -14), 1.1)
+    WhiteBox.PeachTree(scene_, "TaoA", Vector3(4, 0, 16), 1.2)
+    WhiteBox.PeachTree(scene_, "TaoB", Vector3(6, 0, 4), 1.0)
+    WhiteBox.PeachTree(scene_, "TaoC", Vector3(-3, 0, -19), 1.1)
 
     -- 望夫崖（斜坡 + 崖顶平台）
-    WhiteBox.Box(scene_, "CliffRamp", Vector3(10, 1.25, -10), Vector3(6, 2.5, 5), { 0.48, 0.42, 0.36 })
-    WhiteBox.Box(scene_, "CliffTop", Vector3(15, 3.5, -10), Vector3(5, 1, 5), { 0.46, 0.40, 0.34 })
-    WhiteBox.Sphere(scene_, "CliffMarker", Vector3(15, 4.8, -10), 0.4, { 0.90, 0.70, 0.75 }, { unlit = true })
+    WhiteBox.Box(scene_, "CliffRamp", Vector3(4, 1.25, -15), Vector3(5, 2.5, 5), { 0.48, 0.42, 0.36 })
+    WhiteBox.Box(scene_, "CliffTop", Vector3(6, 3.5, -15), Vector3(4, 1, 5), { 0.46, 0.40, 0.34 })
+    WhiteBox.Sphere(scene_, "CliffMarker", Vector3(6, 4.8, -15), 0.4, { 0.90, 0.70, 0.75 }, { unlit = true })
 
     -- 三朵桃花（演示标记）
-    WhiteBox.BlossomMarker(scene_, Vector3(-8, 0.6, -8), "wood", { 0.36, 0.72, 0.38 })
-    WhiteBox.BlossomMarker(scene_, Vector3(15, 0.6, -10), "fire", { 0.90, 0.35, 0.30 })
-    WhiteBox.BlossomMarker(scene_, Vector3(-2, 0.6, 6), "water", { 0.34, 0.55, 0.85 })
+    WhiteBox.BlossomMarker(scene_, Vector3(-5, 0.6, -14), "wood", { 0.36, 0.72, 0.38 })
+    WhiteBox.BlossomMarker(scene_, Vector3(6, 0.6, -15), "fire", { 0.90, 0.35, 0.30 })
+    WhiteBox.BlossomMarker(scene_, Vector3(-2, 0.6, 10), "water", { 0.34, 0.55, 0.85 })
 
     -- 边界墙
-    WhiteBox.BoundaryWalls(scene_, 17.5, 3.0, { 0.40, 0.40, 0.32 })
+    WhiteBox.BoundaryWalls(scene_, 7.5, 22.5, 3.0, { 0.40, 0.40, 0.32 })
 
     -- 出生点（入口）
-    return Vector3(0, 0.1, 12)
+    return Vector3(0, 0.1, 19)
 end
 
 --- ============================================================================
@@ -206,35 +206,36 @@ end
 function BuildLuoShuiYinShan(root)
     local scene_ = root
     -- 地面：暗色石板
-    WhiteBox.Ground(scene_, "Ground", 36, 36, { 0.32, 0.32, 0.38 })
+    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.32, 0.32, 0.38 })
 
     -- 小镇（几座高低错落的盒屋）
-    WhiteBox.Box(scene_, "TownHouse1", Vector3(-10, 1.0, -6), Vector3(5, 2.0, 4), { 0.40, 0.36, 0.40 })
-    WhiteBox.Box(scene_, "TownHouse2", Vector3(-6, 1.4, 2), Vector3(4, 2.8, 4), { 0.44, 0.38, 0.42 })
-    WhiteBox.Box(scene_, "TownHouse3", Vector3(-13, 0.8, 6), Vector3(4.5, 1.6, 4), { 0.38, 0.34, 0.38 })
+    WhiteBox.Box(scene_, "TownHouse1", Vector3(-4, 1.0, -12), Vector3(4, 2.0, 4), { 0.40, 0.36, 0.40 })
+    WhiteBox.Box(scene_, "TownHouse2", Vector3(2, 1.4, -4), Vector3(4, 2.8, 4), { 0.44, 0.38, 0.42 })
+    WhiteBox.Box(scene_, "TownHouse3", Vector3(-3, 0.8, 8), Vector3(4.5, 1.6, 4), { 0.38, 0.34, 0.38 })
 
     -- 无面鬼处（石台 + 暗色标记）
-    WhiteBox.Cylinder(scene_, "GhostStone", Vector3(10, 0.3, 10), 4.0, 0.6, { 0.28, 0.26, 0.30 })
-    WhiteBox.Sphere(scene_, "GhostMarker", Vector3(10, 1.3, 10), 0.5, { 0.55, 0.30, 0.34 }, { unlit = true })
+    WhiteBox.Cylinder(scene_, "GhostStone", Vector3(2, 0.3, 16), 4.0, 0.6, { 0.28, 0.26, 0.30 })
+    WhiteBox.Sphere(scene_, "GhostMarker", Vector3(2, 1.3, 16), 0.5, { 0.55, 0.30, 0.34 }, { unlit = true })
 
     -- 矿场小路（一排岩石球）
     local rockSpots = {
-        Vector3(0, 0.25, 4), Vector3(2, 0.35, 8), Vector3(4, 0.45, 12), Vector3(6, 0.4, 16),
+        Vector3(0, 0.25, -2), Vector3(1, 0.35, 5), Vector3(2, 0.45, 12), Vector3(3, 0.4, 19),
     }
     for i, pos in ipairs(rockSpots) do
         WhiteBox.Sphere(scene_, "Rock" .. i, pos, 0.5 + (i % 2) * 0.2, { 0.30, 0.30, 0.34 })
     end
 
     -- 三朵桃花（演示标记）
-    WhiteBox.BlossomMarker(scene_, Vector3(-10, 0.6, -6), "earth", { 0.78, 0.62, 0.36 })
-    WhiteBox.BlossomMarker(scene_, Vector3(10, 0.6, 10), "water", { 0.34, 0.55, 0.85 })
-    WhiteBox.BlossomMarker(scene_, Vector3(0, 0.6, 4), "metal", { 0.82, 0.82, 0.86 })
+    WhiteBox.BlossomMarker(scene_, Vector3(-4, 0.6, -12), "earth", { 0.78, 0.62, 0.36 })
+    WhiteBox.BlossomMarker(scene_, Vector3(2, 0.6, 16), "water", { 0.34, 0.55, 0.85 })
+    WhiteBox.BlossomMarker(scene_, Vector3(0, 0.6, -2), "metal", { 0.82, 0.82, 0.86 })
 
     -- 边界墙
-    WhiteBox.BoundaryWalls(scene_, 17.5, 3.0, { 0.24, 0.24, 0.30 })
+    local wallRgb = { 0.24, 0.24, 0.30 }
+    WhiteBox.BoundaryWalls(scene_, 7.5, 22.5, 3.0, wallRgb)
 
     -- 出生点
-    return Vector3(0, 0.1, -14)
+    return Vector3(0, 0.1, 19)
 end
 
 return SceneManager

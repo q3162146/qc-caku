@@ -82,7 +82,7 @@ function PlayerController.Create(scene)
     -- 第三人称相机
     tpCamera_ = ThirdPersonCamera.Create(scene, {
         modes = {
-            normal = { distance = 5.0, offset = Vector3(0, 1.7, 0), fov = 45.0 },
+            normal = { distance = 6.0, offset = Vector3(0, 2.0, 0), fov = 50.0 },
         },
         transitionSpeed = 8.0,
         farClip = 300.0,

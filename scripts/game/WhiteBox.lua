@@ -141,15 +141,18 @@ function WhiteBox.Ground(scene, name, sizeX, sizeZ, rgb, y)
 end
 
 --- 创建四周边界墙（防走出白模区域）
----@param halfSize number 半宽（墙在 ±halfSize 处）
+---@param scene Scene
+---@param halfWidth number 半宽（X 轴）
+---@param halfDepth number 半深（Z 轴）
 ---@param height number 墙高
-function WhiteBox.BoundaryWalls(scene, halfSize, height, rgb)
+---@param rgb table
+function WhiteBox.BoundaryWalls(scene, halfWidth, halfDepth, height, rgb)
     local wallThickness = 0.5
     local walls = {
-        { 0,  halfSize,        halfSize * 2, wallThickness },
-        { 0, -halfSize,        halfSize * 2, wallThickness },
-        {  halfSize, 0,        wallThickness, halfSize * 2 },
-        { -halfSize, 0,        wallThickness, halfSize * 2 },
+        { 0,  halfDepth, halfWidth * 2, wallThickness },
+        { 0, -halfDepth, halfWidth * 2, wallThickness },
+        {  halfWidth, 0, wallThickness, halfDepth * 2 },
+        { -halfWidth, 0, wallThickness, halfDepth * 2 },
     }
     for i, w in ipairs(walls) do
         WhiteBox.Box(scene, "Wall" .. i, Vector3(w[1], height / 2, w[2]),

@@ -5,12 +5,12 @@
     "id": "1794762532"
   },
   "entry": "main.lua",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "taptap_publish": {
     "title": "桃素洛无幽·素女篇",
     "description": "<game description>",
     "category": "adventure",
-    "screen_orientation": "landscape",
+    "screen_orientation": "portrait",
     "collection_type": "sce",
     "trial_note": "<developer's note>",
     "app_platforms": "1,2",
