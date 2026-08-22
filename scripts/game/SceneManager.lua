@@ -156,7 +156,8 @@ function BuildChaoyangGukou(root)
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
 
     -- 边界墙
-    WhiteBox.BoundaryWalls(scene_, 8.5, 25.5, 3.0, { 0.55, 0.42, 0.32 })
+    -- 边界墙（R12 根因修复：后墙外移 25.5→32，给第三人称相机留 space；distance 6.8 不被墙碰撞压回）
+    WhiteBox.BoundaryWalls(scene_, 8.5, 32.0, 3.0, { 0.55, 0.42, 0.32 })
 
     -- 出生点
     return Vector3(0, 0.1, 22)
@@ -178,8 +179,8 @@ function BuildGuNeiTaoLin(root)
     WhiteBox.Cylinder(scene_, "Well", Vector3(-2, 0.4, 10), 1.6, 0.8, { 0.60, 0.58, 0.54 })
     WhiteBox.Box(scene_, "WellFrame", Vector3(-2, 1.2, 10), Vector3(1.8, 0.3, 1.8), { 0.55, 0.50, 0.45 })
 
-    -- 桃树群
-    WhiteBox.PeachTree(scene_, "TaoA", Vector3(4, 0, 16), 1.2)
+    -- 桃树群（R12 近景靠边：TaoA 原 (4,0,16) 距出生点仅 3m，树冠易压右中下画幅 → 右移外扩）
+    WhiteBox.PeachTree(scene_, "TaoA", Vector3(7, 0, 15), 1.2)
     WhiteBox.PeachTree(scene_, "TaoB", Vector3(6, 0, 4), 1.0)
     WhiteBox.PeachTree(scene_, "TaoC", Vector3(-3, 0, -19), 1.1)
 
@@ -194,7 +195,8 @@ function BuildGuNeiTaoLin(root)
     WhiteBox.BlossomMarker(scene_, Vector3(-2, 0.6, 10), "water", { 0.34, 0.55, 0.85 })
 
     -- 边界墙
-    WhiteBox.BoundaryWalls(scene_, 7.5, 22.5, 3.0, { 0.40, 0.40, 0.32 })
+    -- 边界墙（R12 根因修复：后墙外移 22.5→29，给相机留 space）
+    WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, { 0.40, 0.40, 0.32 })
 
     -- 出生点（入口）
     return Vector3(0, 0.1, 19)
@@ -214,8 +216,9 @@ function BuildLuoShuiYinShan(root)
     WhiteBox.Box(scene_, "TownHouse3", Vector3(-3, 0.8, 8), Vector3(4.5, 1.6, 4), { 0.38, 0.34, 0.38 })
 
     -- 无面鬼处（石台 + 暗色标记）
-    WhiteBox.Cylinder(scene_, "GhostStone", Vector3(2, 0.3, 16), 4.0, 0.6, { 0.28, 0.26, 0.30 })
-    WhiteBox.Sphere(scene_, "GhostMarker", Vector3(2, 1.3, 16), 0.5, { 0.55, 0.30, 0.34 }, { unlit = true })
+    -- R12 近景靠边：原 x=2 石台直径 4 左缘压出生→小镇中心路线 → 右移到 x=3.5 让出中线
+    WhiteBox.Cylinder(scene_, "GhostStone", Vector3(3.5, 0.3, 16), 4.0, 0.6, { 0.28, 0.26, 0.30 })
+    WhiteBox.Sphere(scene_, "GhostMarker", Vector3(3.5, 1.3, 16), 0.5, { 0.55, 0.30, 0.34 }, { unlit = true })
 
     -- 矿场小路（一排岩石球）
     local rockSpots = {
@@ -225,14 +228,14 @@ function BuildLuoShuiYinShan(root)
         WhiteBox.Sphere(scene_, "Rock" .. i, pos, 0.5 + (i % 2) * 0.2, { 0.30, 0.30, 0.34 })
     end
 
-    -- 三朵桃花（演示标记）
+    -- 三朵桃花（演示标记；water 跟随无面鬼石台右移）
     WhiteBox.BlossomMarker(scene_, Vector3(-4, 0.6, -12), "earth", { 0.78, 0.62, 0.36 })
-    WhiteBox.BlossomMarker(scene_, Vector3(2, 0.6, 16), "water", { 0.34, 0.55, 0.85 })
+    WhiteBox.BlossomMarker(scene_, Vector3(3.5, 0.6, 16), "water", { 0.34, 0.55, 0.85 })
     WhiteBox.BlossomMarker(scene_, Vector3(0, 0.6, -2), "metal", { 0.82, 0.82, 0.86 })
 
-    -- 边界墙
+    -- 边界墙（R12 根因修复：后墙外移 22.5→29，给相机留 space）
     local wallRgb = { 0.24, 0.24, 0.30 }
-    WhiteBox.BoundaryWalls(scene_, 7.5, 22.5, 3.0, wallRgb)
+    WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, wallRgb)
 
     -- 出生点
     return Vector3(0, 0.1, 19)

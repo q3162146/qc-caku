@@ -24,6 +24,7 @@ local PlayerController = require "game.PlayerController"
 local InputManager = require "game.InputManager"
 local FlowController = require "flow.FlowController"
 local DialogueUI = require "ui.DialogueUI"
+local VideoSpike = require "experiments.VideoSpike"
 local UI = require "urhox-libs/UI"
 
 ---@type Scene|nil
@@ -155,7 +156,7 @@ function Start()
 
     print("=== 启动完成 ===")
     print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | 竖屏 9:16 纵深布局")
-    print("调试：F5 强制完成段落 | F2/F3/F4 直切三场景 | ESC 退出")
+    print("调试：F5 强制完成段落 | F6 视频生命周期 Spike | F2/F3/F4 直切三场景 | ESC 退出")
 end
 
 function Stop()
@@ -169,6 +170,11 @@ end
 function HandleUpdate(eventType, eventData)
     local timeStep = eventData["TimeStep"]:GetFloat()
 
+    -- 视频生命周期 Spike（实验模块）：激活时每帧驱动其计时器/状态机
+    if VideoSpike.IsActive() then
+        VideoSpike.Update(timeStep)
+    end
+
     -- 对话打开时：只处理对话输入，玩家停移动（防串台）
     if DialogueUI.IsOpen() then
         DialogueUI.HandleInput()
@@ -177,6 +183,10 @@ function HandleUpdate(eventType, eventData)
     end
 
     -- 调试快捷键
+    if InputManager.IsKeyPress(KEY_F6) then
+        print("[main] 调试：视频生命周期 Spike")
+        VideoSpike.Toggle()
+    end
     if InputManager.IsKeyPress(KEY_F5) then
         FlowController.DebugForceComplete()
     end

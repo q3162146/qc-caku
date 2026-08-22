@@ -45,14 +45,16 @@ function PlayerController.Create(scene)
     -- 玩家节点
     playerNode_ = scene:CreateChild("Player")
 
-    -- 视觉：球体身体 + 头顶小标记（白模，后续换正式模型）
+    -- 视觉：球体身体（白模，后续换正式模型）
+    -- R12（2026-08-22）：视觉球体缩小（胶囊 0.7×1.8 仅作碰撞，视觉约 1.2m 高），
+    --   修复真机复核「玩家占屏 1/4~1/3、遮挡无涕桃与前进路线」
     local modelNode = playerNode_:CreateChild("ModelNode")
     local bodyModel = modelNode:CreateComponent("StaticModel")
     bodyModel:SetModel(cache:GetResource("Model", "Models/Sphere.mdl"))
     bodyModel:SetMaterial(WhiteBoxCreatePlayerMaterial())
     bodyModel.castShadows = true
-    modelNode.scale = Vector3(0.6, 0.9, 0.6)
-    modelNode.position = Vector3(0, 0.95, 0)
+    modelNode.scale = Vector3(0.45, 0.6, 0.45)
+    modelNode.position = Vector3(0, 0.65, 0)
 
     -- 刚体（运动学角色：KCC 驱动，RigidBody 只负责碰撞事件）
     local body = playerNode_:CreateComponent("RigidBody")
@@ -80,9 +82,10 @@ function PlayerController.Create(scene)
     character_.rotationSpeed = 1440.0
 
     -- 第三人称相机
+    -- R12（2026-08-22）：拉远 + 抬升 + 加宽视角，缩小玩家占屏（真机复核占屏 1/4~1/3 → 修复）
     tpCamera_ = ThirdPersonCamera.Create(scene, {
         modes = {
-            normal = { distance = 6.0, offset = Vector3(0, 2.0, 0), fov = 50.0 },
+            normal = { distance = 6.8, offset = Vector3(0, 2.3, 0), fov = 52.0 },
         },
         transitionSpeed = 8.0,
         farClip = 300.0,
