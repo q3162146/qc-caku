@@ -612,7 +612,7 @@ end
 ---@param eventType string
 ---@param eventData? table
 local function handleBackground(eventType, eventData)
-    log("后台事件 " .. eventType)
+    log("后台事件 " .. tostring(eventType))
     -- 若当前有播放器正在播放，则记录并暂停（模拟 mediaPos 断点写入）
     for _, w in ipairs(widgets_) do
         if w and w.IsPlaying and w:IsPlaying() then
@@ -625,7 +625,7 @@ end
 ---@param eventType string
 ---@param eventData? table
 local function handleForeground(eventType, eventData)
-    log("前台事件 " .. eventType)
+    log("前台事件 " .. tostring(eventType))
     -- 演示恢复契约：如需续播可在此按媒体断点恢复（本项目正式接入另做）
     for _, w in ipairs(widgets_) do
         if w and w.IsPlaying and not w:IsPlaying() and w:GetDuration() > 0 then

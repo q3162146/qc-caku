@@ -120,6 +120,33 @@ end
 -- 生命周期
 -- ============================================================================
 
+--- 调试：真机触屏触发 Spike 的角标按钮（真机无 F6 键盘；S9 发布前移除）
+local spikeButton_ = nil
+local function ShowSpikeDebugButton()
+    if spikeButton_ then return end
+    local root = UI.Panel {
+        id = "spikeDebugRoot",
+        width = "100%", height = "100%",
+        pointerEvents = "box-none",  -- 透传，避免拦截游戏输入（虚拟摇杆/跳跃）
+    }
+    local btn = UI.Button {
+        id = "spikeDebugBtn",
+        text = "Spike",
+        position = "absolute", top = 28, right = 20,
+        width = 96, height = 34,
+        variant = "secondary",
+        fontSize = 14,
+        marginTop = 0, marginLeft = 0, marginRight = 0, marginBottom = 0,
+        onClick = function()
+            print("[main] 调试：视频生命周期 Spike（触屏按钮）")
+            VideoSpike.Toggle()
+        end,
+    }
+    root:AddChild(btn)
+    spikeButton_ = btn
+    UI.SetRoot(root)
+end
+
 function Start()
     print("=== 桃素洛无幽·素女篇 启动（S2 对话会话） ===")
 
@@ -140,6 +167,9 @@ function Start()
         scale = UI.Scale.DEFAULT,
     })
 
+    -- 3.1 真机触屏 Spike 调试按钮（无 F6 键盘的入口；S9 前移除）
+    ShowSpikeDebugButton()
+
     -- 3. 场景与玩家
     CreateScene()
     PlayerController.Create(scene_)
@@ -156,7 +186,7 @@ function Start()
 
     print("=== 启动完成 ===")
     print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | 竖屏 9:16 纵深布局")
-    print("调试：F5 强制完成段落 | F6 视频生命周期 Spike | F2/F3/F4 直切三场景 | ESC 退出")
+    print("调试：F5 强制完成段落 | F6/右上角Spike按钮 视频生命周期 Spike | F2/F3/F4 直切三场景 | ESC 退出")
 end
 
 function Stop()

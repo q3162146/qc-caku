@@ -61,12 +61,13 @@
 
 ## 六、遗留风险清单
 
-1. **切后台/回前台、通知栏返回视频行为**：事件已订阅（后台自动 Pause 并记录断点），但**本次 WASM 未实测**——建议真机补测（切后台/回前台/通知栏），确认 HTML5 `<video>` 行为与断点恢复是否符合预期。
-2. **Seek 容差 0.15 偏临界**：E 实测 diff=0.107 在容差内，但接近阈值；若真机 `onTimeUpdate` 频率/首次抖动不同，需放宽 `TOL` 或改单次确认+阈值策略。
-3. **正式「同屏 ≤2 播放器」**：WAASM 下同屏 3 可用（ready=3），但资源/内存偏好下**正式接入建议按 ≤2**（剧情播放器 1 + 循环背景 ≤1）。
-4. **`experiments/VideoSpike.lua` 是实验模块**：`F6` 触发 + Spike 按钮 + Spike 文件均为调试代码，**S9 发布前必须移除**（或保留作参考，但不得进正式流程）。
-5. **素材路径/名称**：Spike 引用的三档视频实际在 `assets/video/短视频生命周期 spike（推荐）/`（全角括号），正式接入需固定资源根路径，避免与 `assets/Videos/` 等旧路径混淆。
-6. **两工作区同步**：本地（`Videos/` 路径、`Update(dt)` 为主）与平台侧（`video/短视频…（推荐）/` 路径、`Process(dt)`）已统一为修正版，但本地镜像仍需 `git fetch origin && git rebase origin/main` 合并；`docs/memory-index.md` 两边已各自更新，需一次性对齐避免分叉。
+1. **真机切后台/回前台（已实测，真机差异）**：真机（RMX3366/Android14）Spike 视频播放中切走，**视频自动冻结**（HTML5 `<video>` 页面隐藏暂停，正常）；但**切回游戏后 Spike 卡住、不恢复**（定格，无后续/无 REVEAL/汇报）。且**虚拟手势（长按底部→最近任务/切走，无实体 Home 键）下没有触发 `AppDidEnterBackground / AppDidEnterForeground` 事件** → Spike 的「自动 Pause + mediaPos 断点」逻辑用不上。⚠️ **正式（S6）断点恢复必须「视频冻结可自愈」**（用 `onTimeUpdate` 空窗判定冻结 + 续播），不能依赖 `AppDidEnterBackground`。
+2. **A 场景 Seek 双确认真机失败**：真机 `Seek(3.5)` 后视频未回退到 3.5（`A seek确认 #1 t=3.593` 后播放到 `t=4.893`，confirm#2 不成立），A 记录不了「Seek(3.5) 两次确认」精度，仅靠 onEnded 走完。与真机「Seek 不回退」一致；TTM 已给 **E** 加「Seek 重试」兜底（E 真机走通），**建议 A 也加同样兜底**。
+3. **Seek 容差 0.15 偏临界**：E 实测 diff=0.107 在容差内，但接近阈值；若真机 `onTimeUpdate` 频率/首次抖动不同，需放宽 `TOL` 或改单次确认+阈值策略。
+4. **正式「同屏 ≤2 播放器」**：WASM 下同屏 3 可用（ready=3），但资源/内存偏好下**正式接入建议按 ≤2**（剧情播放器 1 + 循环背景 ≤1）。
+5. **`experiments/VideoSpike.lua` 是实验模块**：`F6` 触发 + Spike 按钮 + Spike 文件均为调试代码，**S9 发布前必须移除**（或保留作参考，但不得进正式流程）。
+6. **素材路径/名称**：Spike 引用的三档视频实际在 `assets/video/短视频生命周期 spike（推荐）/`（全角括号），正式接入需固定资源根路径，避免与 `assets/Videos/` 等旧路径混淆。
+7. **两工作区同步**：本地（`Videos/` 路径、`Update(dt)` 为主）与平台侧（`video/短视频…（推荐）/` 路径、`Process(dt)`）已统一为修正版，但本地镜像仍需 `git fetch origin && git rebase origin/main` 合并；`docs/memory-index.md` 两边已各自更新，需一次性对齐避免分叉。
 
 ## 七、下一步建议
 
