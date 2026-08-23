@@ -101,7 +101,7 @@ function RenderText()
                 marginTop = 8,
             },
             UI.Button {
-                text = hasMore and "继续 ▸" or "下一步",
+                text = hasMore and "继续 ›" or "下一步",
                 variant = "secondary",
                 alignSelf = "flex-end",
                 marginTop = 10,
