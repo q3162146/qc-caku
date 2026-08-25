@@ -119,7 +119,7 @@ local function CreateVideoSpikeTrigger()
         variant = "secondary",
         position = "absolute",
         top = 12,
-        right = 12,
+        left = 192,
         width = 82,
         height = 38,
         fontSize = 14,
@@ -135,7 +135,7 @@ local function CreateVideoSpikeTrigger()
         variant = "secondary",
         position = "absolute",
         top = 12,
-        right = 102,
+        left = 102,
         width = 82,
         height = 38,
         fontSize = 14,
@@ -152,7 +152,7 @@ local function CreateVideoSpikeTrigger()
         variant = "secondary",
         position = "absolute",
         top = 12,
-        right = 192,
+        left = 12,
         width = 82,
         height = 38,
         fontSize = 14,
@@ -170,7 +170,7 @@ local function CreateVideoSpikeTrigger()
         variant = "secondary",
         position = "absolute",
         top = 58,
-        right = 192,
+        left = 12,
         width = 82,
         height = 38,
         fontSize = 14,
@@ -187,7 +187,7 @@ local function CreateVideoSpikeTrigger()
         variant = "secondary",
         position = "absolute",
         top = 58,
-        right = 102,
+        left = 102,
         width = 82,
         height = 38,
         fontSize = 14,
@@ -204,7 +204,7 @@ local function CreateVideoSpikeTrigger()
         variant = "secondary",
         position = "absolute",
         top = 58,
-        right = 12,
+        left = 192,
         width = 82,
         height = 38,
         fontSize = 14,
@@ -223,7 +223,7 @@ local function CreateVideoSpikeTrigger()
         end,
     }
     root:AddChild(loadTrigger)
-    print("[main] 已创建右上角调试触屏入口：Spike(F6)/断点(F7)/S6链(F10)/完成(F5)/保存(F8)/读档(F9)（S9 前移除）")
+    print("[main] 已创建左上角调试触屏入口：Spike(F6)/断点(F7)/S6链(F10)/完成(F5)/保存(F8)/读档(F9)（S9 前移除）")
 end
 
 -- ============================================================================
