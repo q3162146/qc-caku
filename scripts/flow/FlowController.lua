@@ -22,6 +22,7 @@ local DialogueData = require "config.DialogueData"
 local DialogueUI = require "ui.DialogueUI"
 local SceneManager = require "game.SceneManager"
 local PlayerController = require "game.PlayerController"
+local MediaPlayer = require "media.MediaPlayer"
 
 local FlowController = {}
 
@@ -34,6 +35,9 @@ local state_ = nil         -- { chapterIndex, paragraphIndex, paragraph, collect
 ---@param data table
 function FlowController.Init(data)
     data_ = data
+    MediaPlayer.SetCompleteHandler(function(result)
+        CompleteParagraph(result)
+    end)
 end
 
 --- 从第一段开始（演示：ch0/P01）
@@ -67,16 +71,16 @@ function EnterParagraph()
 
     print("[Flow] 进入段落 " .. p.id .. "（" .. p.type .. "）" .. (p.desc or ""))
 
-    -- 段落指定场景 → 切换白模场景
+    -- 段落指定场景 → 切换白模场景；切换前显式释放剧情播放器
     if p.scene then
+        MediaPlayer.Stop(true)
         SceneManager.LoadScene(p.scene)
     end
 
     -- 按类型处理
     if p.type == "video" then
-        -- 媒体模块未接入：本会话自动完成（正式接入见 media/ 会话）
-        print("[Flow] 视频段落 " .. (p.video or "?") .. " 未接入媒体模块，本会话自动跳过")
-        CompleteParagraph({ done = true })
+        print("[Flow] 视频段落 " .. (p.video or "?") .. " → MediaPlayer")
+        MediaPlayer.Play(p, data_)
     elseif p.type == "dialogue" or p.type == "choice" then
         StartDialogueParagraph(p)
     elseif p.type == "explore" then
@@ -221,6 +225,7 @@ end
 function FlowController.DebugForceComplete()
     if state_ == nil or state_.paragraph == nil then return end
     print("[Flow] 调试：强制完成段落 " .. state_.paragraph.id)
+    MediaPlayer.Stop(true)
     DialogueUI.Hide()   -- 若对话开着，先关闭（避免回调悬空）
     CompleteParagraph({ done = true })
 end

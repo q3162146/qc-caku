@@ -24,6 +24,7 @@ local PlayerController = require "game.PlayerController"
 local InputManager = require "game.InputManager"
 local FlowController = require "flow.FlowController"
 local DialogueUI = require "ui.DialogueUI"
+local MediaPlayer = require "media.MediaPlayer"
 local VideoSpike = require "experiments.VideoSpike"
 local UI = require "urhox-libs/UI"
 
@@ -34,35 +35,44 @@ local scene_ = nil
 -- 单机模式校验
 -- ============================================================================
 
---- 读取并解析 .project/settings.json
----@return table|nil settings, string|nil err
+--- 读取开发环境项目设置。发布包不携带 .project 工作区目录，
+--- 发布模式由框架注入的 IsNetworkMode() 校验。
+---@return table|nil settings, string|nil err, string|nil source
 local function ReadProjectSettings()
     if not fileSystem:FileExists(".project/settings.json") then
-        return nil, "missing"
+        return nil, "workspace_config_unavailable", "runtime"
     end
     local file = File(".project/settings.json", FILE_READ)
     if file == nil or not file:IsOpen() then
-        return nil, "unreadable"
+        return nil, "unreadable", ".project/settings.json"
     end
     local content = file:ReadString()
     file:Close()
     if content == nil or content == "" then
-        return nil, "empty"
+        return nil, "empty", ".project/settings.json"
     end
     local ok, data = pcall(cjson.decode, content)
     if not ok or type(data) ~= "table" then
-        return nil, "bad_json"
+        return nil, "bad_json", ".project/settings.json"
     end
-    return data, nil
+    return data, nil, ".project/settings.json"
 end
 
---- 校验单机模式：multiplayer.enabled 必须为 false
---- 配置缺失/损坏/多人模式 → 打日志退出
+--- 校验单机模式：配置可用时严格读取配置；发布包无工作区配置时由框架判断。
 ---@return boolean
 function ValidateSinglePlayerConfig()
-    local settings, err = ReadProjectSettings()
+    local settings, err, source = ReadProjectSettings()
     if settings == nil then
-        print("[main] 错误：.project/settings.json " .. tostring(err) .. "，退出")
+        if err == "workspace_config_unavailable" then
+            if IsNetworkMode() then
+                print("[main] 错误：发布运行时处于联网模式，本作必须为单机，退出")
+                engine:Exit()
+                return false
+            end
+            print("[main] 单机模式校验通过 | source=IsNetworkMode() | networkMode=false")
+            return true
+        end
+        print("[main] 错误：项目设置 " .. tostring(source) .. " " .. tostring(err) .. "，退出")
         engine:Exit()
         return false
     end
@@ -70,7 +80,7 @@ function ValidateSinglePlayerConfig()
     local runtime = settings["@runtime"]
     local mp = type(runtime) == "table" and runtime.multiplayer or nil
     if type(mp) ~= "table" or type(mp.enabled) ~= "boolean" then
-        print("[main] 错误：缺少明确的 @runtime.multiplayer.enabled，退出")
+        print("[main] 错误：" .. tostring(source) .. " 缺少明确的 @runtime.multiplayer.enabled，退出")
         engine:Exit()
         return false
     end
@@ -80,7 +90,7 @@ function ValidateSinglePlayerConfig()
         return false
     end
 
-    print("[main] 单机模式校验通过（multiplayer.enabled = false）")
+    print("[main] 单机模式校验通过 | source=" .. tostring(source) .. " | multiplayer.enabled=false")
     return true
 end
 
@@ -90,6 +100,53 @@ function ConfigurePortraitOrientation()
         .. tostring(graphics:GetOrientations()))
     print("[main] 画面尺寸: " .. tostring(graphics:GetWidth()) .. "x"
         .. tostring(graphics:GetHeight()) .. " | DPR=" .. tostring(graphics:GetDPR()))
+end
+
+-- 真机触屏入口：S9 发布前移除。Spike 运行时会暂时接管 UI 根节点，结束后恢复此根节点。
+local function CreateVideoSpikeTrigger()
+    local root = UI.GetRoot()
+    if root == nil then
+        root = UI.Panel {
+            width = "100%",
+            height = "100%",
+            pointerEvents = "box-none",
+        }
+        UI.SetRoot(root)
+    end
+
+    local trigger = UI.Button {
+        text = "Spike",
+        variant = "secondary",
+        position = "absolute",
+        top = 12,
+        right = 12,
+        width = 82,
+        height = 38,
+        fontSize = 14,
+        onClick = function()
+            print("[main] 触屏：视频生命周期 Spike")
+            VideoSpike.Toggle()
+        end,
+    }
+    root:AddChild(trigger)
+
+    local breakpointTrigger = UI.Button {
+        text = "断点",
+        variant = "secondary",
+        position = "absolute",
+        top = 12,
+        right = 102,
+        width = 82,
+        height = 38,
+        fontSize = 14,
+        onClick = function()
+            print("[main] 触屏：视频断点测试 Hook")
+            MediaPlayer.ToggleBreakpointTest()
+        end,
+    }
+    root:AddChild(breakpointTrigger)
+    print("[main] 已创建右上角断点测试入口（S9 前移除）")
+    print("[main] 已创建右上角 Spike 触屏入口（S9 前移除）")
 end
 
 -- ============================================================================
@@ -120,33 +177,6 @@ end
 -- 生命周期
 -- ============================================================================
 
---- 调试：真机触屏触发 Spike 的角标按钮（真机无 F6 键盘；S9 发布前移除）
-local spikeButton_ = nil
-local function ShowSpikeDebugButton()
-    if spikeButton_ then return end
-    local root = UI.Panel {
-        id = "spikeDebugRoot",
-        width = "100%", height = "100%",
-        pointerEvents = "box-none",  -- 透传，避免拦截游戏输入（虚拟摇杆/跳跃）
-    }
-    local btn = UI.Button {
-        id = "spikeDebugBtn",
-        text = "Spike",
-        position = "absolute", top = 28, right = 20,
-        width = 96, height = 34,
-        variant = "secondary",
-        fontSize = 14,
-        marginTop = 0, marginLeft = 0, marginRight = 0, marginBottom = 0,
-        onClick = function()
-            print("[main] 调试：视频生命周期 Spike（触屏按钮）")
-            VideoSpike.Toggle()
-        end,
-    }
-    root:AddChild(btn)
-    spikeButton_ = btn
-    UI.SetRoot(root)
-end
-
 function Start()
     print("=== 桃素洛无幽·素女篇 启动（S2 对话会话） ===")
 
@@ -167,9 +197,6 @@ function Start()
         scale = UI.Scale.DEFAULT,
     })
 
-    -- 3.1 真机触屏 Spike 调试按钮（无 F6 键盘的入口；S9 前移除）
-    ShowSpikeDebugButton()
-
     -- 3. 场景与玩家
     CreateScene()
     PlayerController.Create(scene_)
@@ -177,6 +204,7 @@ function Start()
 
     -- 4. 数据与流程（本会话无存档 IO，用全新数据）
     local data = PlayerData.Sanitize(nil)
+    CreateVideoSpikeTrigger()
     FlowController.Init(data)
     FlowController.Start()
 
@@ -186,10 +214,11 @@ function Start()
 
     print("=== 启动完成 ===")
     print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | 竖屏 9:16 纵深布局")
-    print("调试：F5 强制完成段落 | F6/右上角Spike按钮 视频生命周期 Spike | F2/F3/F4 直切三场景 | ESC 退出")
+    print("调试：F5 强制完成段落 | F6 视频生命周期 Spike | F7 视频断点测试 Hook | F2/F3/F4 直切三场景 | ESC 退出")
 end
 
 function Stop()
+    MediaPlayer.Stop(true)
     InputManager.Shutdown()
     UI.Shutdown()
     print("[main] 停止")
@@ -199,6 +228,11 @@ end
 ---@param eventData UpdateEventData
 function HandleUpdate(eventType, eventData)
     local timeStep = eventData["TimeStep"]:GetFloat()
+
+    -- 正式剧情视频：Widget 自身负责解码与回调，主循环负责会话冻结自愈
+    if MediaPlayer.IsPlaying() then
+        MediaPlayer.Update(timeStep)
+    end
 
     -- 视频生命周期 Spike（实验模块）：激活时每帧驱动其计时器/状态机
     if VideoSpike.IsActive() then
@@ -217,19 +251,26 @@ function HandleUpdate(eventType, eventData)
         print("[main] 调试：视频生命周期 Spike")
         VideoSpike.Toggle()
     end
+    if InputManager.IsKeyPress(KEY_F7) then
+        print("[main] 调试：视频断点测试 Hook")
+        MediaPlayer.ToggleBreakpointTest()
+    end
     if InputManager.IsKeyPress(KEY_F5) then
         FlowController.DebugForceComplete()
     end
     if InputManager.IsKeyPress(KEY_F2) then
         print("[main] 调试：直切场景 chaoyang_gukou（流程状态不变）")
+        MediaPlayer.Stop(true)
         SceneManager.LoadScene("chaoyang_gukou")
     end
     if InputManager.IsKeyPress(KEY_F3) then
         print("[main] 调试：直切场景 gu_nei_taolin（流程状态不变）")
+        MediaPlayer.Stop(true)
         SceneManager.LoadScene("gu_nei_taolin")
     end
     if InputManager.IsKeyPress(KEY_F4) then
         print("[main] 调试：直切场景 luoshui_yinshan（流程状态不变）")
+        MediaPlayer.Stop(true)
         SceneManager.LoadScene("luoshui_yinshan")
     end
     if InputManager.IsKeyPress(KEY_ESCAPE) then
