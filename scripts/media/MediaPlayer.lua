@@ -16,6 +16,14 @@ local PlayerData = require "config.PlayerData"
 
 local MediaPlayer = {}
 
+--- 统一日志前缀。
+--- 必须先定义：下方 renderBreakpointChoices / handleBreakpointChoice 在定义时即引用本 local；
+--- 若放在它们之后，Lua 会因词法作用域把它们绑定到全局 log（真机上为非可调用对象）而崩溃。
+---@param message string
+local function log(message)
+    print("[MediaPlayer] " .. message)
+end
+
 local VIDEO_SOURCES = {
     -- 临时占位：正式 S1~S13 到位后逐项替换为对应剧情视频。
     S1 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
@@ -167,10 +175,6 @@ local function handleBreakpointChoice(key)
     log("断点交互选择已锁定 | key=" .. tostring(key)
         .. " | belief=" .. tostring(axis and scene_belief_value(axis) or 0))
     resumeFromBreakpoint()
-end
-
-local function log(message)
-    print("[MediaPlayer] " .. message)
 end
 
 ---@param value number
