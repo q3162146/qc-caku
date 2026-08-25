@@ -192,8 +192,12 @@ function OnChoiceMade(p, key)
         -- 开场三选：不计信念，只记录元叙事钩子（《02》；结局后对照回放）
         data_.flags.open_choice = key
         print("[Flow] 开场选择已记录 flags.open_choice = " .. key)
+    elseif p.recordFlag ~= nil then
+        -- 叙事记录型选择（无面鬼互动 / 终局抉择等）：只写 flags，不计信念
+        data_.flags[p.recordFlag] = key
+        print("[Flow] 已记录 " .. p.recordFlag .. " = " .. key)
     elseif p.beliefMap ~= nil and p.beliefMap[key] ~= nil then
-        -- 预留：后续选择段按段落表 beliefMap 加信念（S4 无面鬼互动等）
+        -- 信念选择段：按段落表 beliefMap 加信念（S6 记忆印证 5 段等）
         local axis = p.beliefMap[key]
         if data_.belief[axis] ~= nil then
             data_.belief[axis] = data_.belief[axis] + 1
@@ -271,8 +275,12 @@ function CompleteParagraph(result)
     print("[Flow] 段落 " .. p.id .. " 完成 | 信念(重逢/放手/传说) = "
         .. data_.belief.reunion .. "/" .. data_.belief.release .. "/" .. data_.belief.legend)
 
-    -- 推进：显式 next 优先，否则用段落表 next
-    local nextId = result.next or p.next
+    -- 推进：显式 next 优先 → 段落表 resolveNext(data)（动态分支）→ 段落表 next
+    local nextId = result.next
+    if nextId == nil and type(p.resolveNext) == "function" then
+        nextId = p.resolveNext(data_)
+    end
+    nextId = nextId or p.next
     if nextId == nil then
         print("[Flow] 段落 " .. p.id .. " 无 next，流程终止")
         return

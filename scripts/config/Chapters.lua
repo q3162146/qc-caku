@@ -115,14 +115,69 @@ local Chapters = {
                 type = "dialogue",
                 npc = "守桃老人",
                 lines = "depart_guide",
-                next = "P99",
+                next = "P21",   -- 前往洛水阴山 → 进入 ch2
             },
-            -- P99 骨架期临时收尾：白模演示循环回 P01；ch2~ch4 接入后移除
+            -- P99 骨架期临时收尾：白模演示循环回 P01；现为结局播完后的演示闭环（正式结局/菜单建成后移除）
             {
                 id = "P99",
                 type = "end",
-                desc = "骨架期演示闭环（ch2 洛水阴山 / ch3 六艺 / ch4 终局 待后续会话）",
+                desc = "骨架期演示闭环（结局播完后循环回 P01；正式结局/菜单建成后移除）",
                 next = "P01",
+            },
+        },
+    },
+    {
+        -- ch2 第四回·洛水阴（无面鬼初见 S5 + 互动三选 + 入六艺试炼；S5 占位素材，见《02》剧本）
+        id = "ch2",
+        title = "第四回·洛水阴，无面泪",
+        seal = "water",            -- 印章：水
+        paragraphs = {
+            -- P21 洛水阴山初见无面鬼（Seedance S5 占位）
+            {
+                id = "P21",
+                type = "video",
+                video = "S5",
+                breakpoints = { { at = -1, act = "auto" } },
+                scene = "luoshui_yinshan",
+                next = "P22",
+            },
+            -- P22 无面鬼互动（递水/陪坐/唤名；只记录 flags.noface_action，不计信念——见《05》）
+            {
+                id = "P22",
+                type = "choice",
+                npc = "无面鬼",
+                lines = "noface_choice",
+                choiceOrder = { "water", "sit", "call" },
+                recordFlag = "noface_action",
+                resolveNext = function(data)
+                    local a = data.flags and data.flags.noface_action
+                    if a == "sit" then return "P24" end
+                    if a == "call" then return "P25" end
+                    return "P23"   -- 兜底：water 或未记录
+                end,
+                next = "P23",
+            },
+            -- P23/P24/P25 无面鬼互动反馈（画外心声）→ 进入 ch3/P31 六艺试炼
+            {
+                id = "P23",
+                type = "dialogue",
+                npc = "无面鬼",
+                lines = "noface_water",
+                next = "P31",
+            },
+            {
+                id = "P24",
+                type = "dialogue",
+                npc = "无面鬼",
+                lines = "noface_sit",
+                next = "P31",
+            },
+            {
+                id = "P25",
+                type = "dialogue",
+                npc = "无面鬼",
+                lines = "noface_call",
+                next = "P31",
             },
         },
     },
@@ -246,7 +301,62 @@ local Chapters = {
             },
         },
     },
-    -- ch2 第四回·洛水阴 / ch4 尾声·终局：演出接入会话补充
+    {
+        -- ch4 尾声·终局（献花前 → 终局抉择(两行动) → 按最高信念轴出三结局 S7/S8/S9；占位素材，见《02》《05》）
+        id = "ch4",
+        title = "尾声·无涕桃，人面何处",
+        seal = "earth",            -- 印章：土（占位；章回体尾声用题跋）
+        epigraph = "人面不知何处去，桃花依旧笑春风",
+        paragraphs = {
+            -- P41 献花前守桃老人（ch3/P36 后进入）
+            {
+                id = "P41",
+                type = "dialogue",
+                npc = "守桃老人",
+                lines = "offering_before",
+                next = "P42",
+            },
+            -- P42 终局抉择（两行动：献花/离开。作为最终确认，结局按最高信念轴分叉）
+            {
+                id = "P42",
+                type = "choice",
+                npc = "旁白",
+                lines = "final_choice",
+                choiceOrder = { "offer", "leave" },
+                recordFlag = "final_action",
+                -- 三结局分支：重逢→S7圆满 / 放手→S8放手 / 传说→S9传说（按最高信念轴）
+                resolveNext = function(data)
+                    local b = data.belief
+                    if b.reunion >= b.release and b.reunion >= b.legend then return "P43" end
+                    if b.legend >= b.reunion and b.legend >= b.release then return "P45" end
+                    return "P44"
+                end,
+                next = "P43",   -- 兜底
+            },
+            -- 结局分叉：S7圆满 / S8放手 / S9传说（占位素材），播完回 P99 演示闭环
+            {
+                id = "P43",
+                type = "video",
+                video = "S7",
+                scene = "chaoyang_gukou",
+                next = "P99",
+            },
+            {
+                id = "P44",
+                type = "video",
+                video = "S8",
+                scene = "chaoyang_gukou",
+                next = "P99",
+            },
+            {
+                id = "P45",
+                type = "video",
+                video = "S9",
+                scene = "chaoyang_gukou",
+                next = "P99",
+            },
+        },
+    },
 }
 
 return Chapters
