@@ -93,9 +93,9 @@
 - v0.1.0：创建单机白模骨架，完成三场景、PlayerData、Chapters、Flow、移动相机与基础碰撞。
 
 ## 下一步
-1. **B｜视频生命周期 Spike —— WASM 验证通过 ✅ + 真机差异已解决**：PC WASM 真播放全过，《22》§2 成立；真机（RMX3366）后台/前台实测发现「视频切后台冻结、回前台 Spike 卡住、虚拟手势下 AppDidEnterBackground 不触发、A 双确认失败」；**TTM 已解决**：A 加 Seek(3.5) 重试兜底（≤3 次）+ **S6「冻结自愈」方案定案**（onTimeUpdate/GetCurrentTime 空窗 >1.5s 判冻结 → 记 mediaPos.timeSec → Pause/Play 自愈 ≤3 次，不依赖 AppDidEnterBackground）。官方构建成功、Lua 0 error、90 帧运行正常（字体/shader 缺失为沙箱固定告警）。
-2. **S6 正式媒体模块 —— TTM 已实现（MediaPlayer.lua）+ 真机 P01 ✅ + 断点 Hook 真机全链路 ✅**：P01 视频真实播放→P02 + mediaPos + 无 Lua error；断点 Hook（at=4.0 三选）命中+锁定+信念+断点不重复+强制 ENDED+存活=0 全过。**剩**：冻结自愈(后台切换)未测（可选补测）、S6 连续 5 段（S6-1..5 未接线，暂不可测）、完整读档恢复（部分测过）。⚠️ 代码回推：TTM 无凭据 → 让 TTM 发 `S6-breakpoint-hook-code.zip`（/workspace/）或 3 个 .lua，本地 push 到 qc-caku（勿泄凭据）。S1~S13 素材占位（`S1_test_mid`）待正式素材；**S9 前移除**断点/Spike/三指调试入口。
-3. **S9 前移除**：Spike F6/Spike 按钮 + 三指手势；正式接入建议同屏 ≤2（按 §2 + mediaPos 断点恢复）。
-4. 后续再做 P02 真实老人交互、媒体断点存档和 ch2/ch3/ch4。
-4. ⚠️ 三指切场景调试手势与 Spike 的 F6 触发，S9 发布前必须移除；未来顶部 HUD 需重评 SafeAreaView `nativeMenuInset=true`。
-5. 同步本地镜像：`git fetch origin && git rebase origin/main`（注意当前 shell 需另装 git，本地无 `/usr/bin/git`）。
+0. **同步管道已就绪（2026-08-25）**：S6 代码已合入并推权威仓（提交 `5d0c95b`）+ 文档整理（`ccb62c7`）。TTM 无 GitHub 账号/无 SSH，已用 **repo 级 fine-grained PAT + `credential.helper store`** 打通直推：此后 TTM `git push github main`，本机 `git fetch github && git rebase github/main` 即同步（不再打 zip/手动合并）；降级用 `git format-patch`。PAT 值只在 TTM 环境，**不进对话**。现行接入说明=素材包/`TTM-共用仓库直推接入说明-方案B凭据.md`；降级=素材包/`TTM-零凭据patch交接.md`；历史接头草稿归档在素材包/`历史交接草稿-勿用/`。
+1. **S6 媒体模块（主要闭环已完成）**：MediaPlayer 状态机 + 断点 Hook（DEBUG_BREAKPOINT_TEST @4.0 三选）+ 冻结自愈 + mediaPos 断点续写/断点不重复/强制 ENDED/显式释放，真机两轮（21:53、22:21 break2.log）全链路 ✅。**剩余验证**：S6 连续 5 段（S6-1..5 未接线，暂不可测）、完整读档恢复（部分测过 02:17 模拟读档）、后台冻结自愈（已在 22:21 复测随切后台/回前台顺带验证到恢复续播）。
+2. **正式素材**：S1~S13 仍为测试占位（`S1_test_mid`），正式素材到位后仅替换 `scripts/media/MediaPlayer.lua` 的 `VIDEO_SOURCES` 映射。
+3. **S9 前移除**：断点/Spike 的 F6/F7/右上角按钮 + 三指手势；正式接入建议同屏 ≤2（按 §2 + mediaPos 断点恢复）；未来顶部 HUD 需重评 SafeAreaView `nativeMenuInset=true`。
+4. **后续主线（下一阶段）**：P02 真实老人交互、媒体断点存档、ch2/ch3/ch4（章节系统已预留，`config/Chapters.lua` + `mediaPos` 断点恢复）。
+5. 同步规则：`git fetch github && git rebase github/main`；推送走 `git push github main`（**勿用** Maker 仓 origin 的 GitHub 凭据；推送前 `git status` 不带 `.tmp/.scratch/.adb-tools/logs/s1_test` 等垃圾）。git 已可用（`/usr/bin/git`）。
