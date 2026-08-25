@@ -145,8 +145,85 @@ local function CreateVideoSpikeTrigger()
         end,
     }
     root:AddChild(breakpointTrigger)
-    print("[main] 已创建右上角断点测试入口（S9 前移除）")
-    print("[main] 已创建右上角 Spike 触屏入口（S9 前移除）")
+
+    -- F10 直切 S6 记忆印证链（ch3/P31）触屏入口：S9 前移除
+    local s6Trigger = UI.Button {
+        text = "S6链",
+        variant = "secondary",
+        position = "absolute",
+        top = 12,
+        right = 192,
+        width = 82,
+        height = 38,
+        fontSize = 14,
+        onClick = function()
+            print("[main] 触屏：直切 S6 记忆印证链（ch3/P31）")
+            MediaPlayer.Stop(true)
+            FlowController.DebugJumpToParagraph("P31")
+        end,
+    }
+    root:AddChild(s6Trigger)
+
+    -- F5 强制完成当前段落触屏入口：S9 前移除
+    local forceCompleteTrigger = UI.Button {
+        text = "完成",
+        variant = "secondary",
+        position = "absolute",
+        top = 58,
+        right = 192,
+        width = 82,
+        height = 38,
+        fontSize = 14,
+        onClick = function()
+            print("[main] 触屏：强制完成当前段落")
+            FlowController.DebugForceComplete()
+        end,
+    }
+    root:AddChild(forceCompleteTrigger)
+
+    -- F8 保存触屏入口：S9 前移除
+    local saveTrigger = UI.Button {
+        text = "保存",
+        variant = "secondary",
+        position = "absolute",
+        top = 58,
+        right = 102,
+        width = 82,
+        height = 38,
+        fontSize = 14,
+        onClick = function()
+            print("[main] 触屏：保存当前进度到 slot1")
+            FlowController.Persist()
+        end,
+    }
+    root:AddChild(saveTrigger)
+
+    -- F9 读档续播触屏入口：S9 前移除
+    local loadTrigger = UI.Button {
+        text = "读档",
+        variant = "secondary",
+        position = "absolute",
+        top = 58,
+        right = 12,
+        width = 82,
+        height = 38,
+        fontSize = 14,
+        onClick = function()
+            print("[main] 触屏：从 slot1 读档并续播")
+            local loaded = PlayerData.Load()
+            if loaded == nil then
+                print("[main] 读档续播失败：无本地存档")
+            else
+                MediaPlayer.Stop(true)
+                FlowController.Init(loaded)
+                if not FlowController.Resume() then
+                    FlowController.Start()
+                end
+            end
+        end,
+    }
+    root:AddChild(loadTrigger)
+    print("[main] 已创建右上角调试触屏入口：Spike(F6)/断点(F7)/S6链(F10)/完成(F5)/保存(F8)/读档(F9)（S9 前移除）")
 end
 
 -- ============================================================================
