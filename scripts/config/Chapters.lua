@@ -29,13 +29,17 @@ local Chapters = {
                 next = "P02",
                 scene = "chaoyang_gukou",
             },
-            -- P02 探索：走近守桃老人（对话系统未接入，白模演示 = 收集 1 个标记点）
+            -- P02 探索：走近守桃老人（交互点 Int_oldman，走近触发初见台词；不再用收集标记点代替）
             {
                 id = "P02",
                 type = "explore",
                 scene = "chaoyang_gukou",
                 goal = "reach_oldman",
-                collectCount = 1,   -- 演示：1 个标记点代替"走近老人"（接入对话后改为触发台词）
+                collectCount = 1,   -- 兼容字段：仍有标记数概念，但走近交互按 interaction 触发
+                interaction = {
+                    trigger = "oldman",         -- 交互点键（PlayerController 识别 Int_<key> → key）
+                    lines = "oldman_greeting",  -- DialogueData 键（初见台词）
+                },
                 desc = "探索朝阳谷口，走近守桃老人",
                 next = "P03",
             },

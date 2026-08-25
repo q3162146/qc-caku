@@ -93,6 +93,27 @@ function EnterParagraph()
     end
 end
 
+--- 走近交互：触发初见台词（P02 等 interaction.trigger 命中时），播完完成段落
+---@param p table 段落定义（含 p.interaction = { trigger, lines }）
+function StartInteractionDialogue(p)
+    local spec = DialogueData.Get(p.interaction.lines)
+    if spec == nil then
+        print("[Flow] 走近交互台词缺失（lines=" .. tostring(p.interaction.lines) .. "），自动通过")
+        CompleteParagraph({ done = true })
+        return
+    end
+
+    local dlg = {
+        npc = spec.npc,
+        lines = spec.lines,
+    }
+    dlg.onDone = function()
+        CompleteParagraph({ done = true })
+    end
+    print("[Flow] 走近交互 " .. p.id .. "（" .. tostring(p.interaction.lines) .. "）")
+    DialogueUI.ShowDialogue(dlg)
+end
+
 --- 启动对话/选择段落（S2：dialogue/choice → DialogueUI）
 ---@param p table 段落定义
 function StartDialogueParagraph(p)
@@ -153,6 +174,17 @@ function FlowController.OnBlossomCollected(key)
     if DialogueUI.IsOpen() then return end   -- 对话中不收（避免与对话推进串台）
     local p = state_.paragraph
     if p.type ~= "explore" then return end
+
+    -- 走近交互优先（P02 等 interaction.trigger 命中）：触发台词对话，播完即完成段落
+    if p.interaction ~= nil then
+        if key == p.interaction.trigger then
+            StartInteractionDialogue(p)
+        else
+            -- 有交互点的探索段（P02）只认交互点完成，忽略沿途桃花等其它拾取，防误完成
+            print("[Flow] 交互段 " .. p.id .. " 忽略无关拾取: " .. tostring(key))
+        end
+        return
+    end
 
     -- 数据变化：写入共享 PlayerData（五行桃花 + 札记占位）
     if data_.blossoms[key] ~= nil then
