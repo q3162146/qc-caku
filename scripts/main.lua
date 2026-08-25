@@ -202,11 +202,18 @@ function Start()
     PlayerController.Create(scene_)
     SceneManager.Init(scene_, PlayerController)
 
-    -- 4. 数据与流程（本会话无存档 IO，用全新数据）
-    local data = PlayerData.Sanitize(nil)
+    -- 4. 数据与流程：先尝试读档（磁盘 slot1），命中 mediaPos.node 则启动自动续档；否则全新开始
+    local data = PlayerData.Load()
+    if data ~= nil then
+        print("[main] 检测到本地存档，尝试自动续档")
+    else
+        data = PlayerData.Sanitize(nil)
+    end
     CreateVideoSpikeTrigger()
     FlowController.Init(data)
-    FlowController.Start()
+    if not FlowController.Resume() then
+        FlowController.Start()
+    end
 
     -- 6. 事件订阅
     SubscribeToEvent("Update", "HandleUpdate")
@@ -214,7 +221,7 @@ function Start()
 
     print("=== 启动完成 ===")
     print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | 竖屏 9:16 纵深布局")
-    print("调试：F5 强制完成段落 | F6 视频生命周期 Spike | F7 视频断点测试 Hook | F2/F3/F4 直切三场景 | ESC 退出")
+    print("调试：F5 强制完成段落 | F6 视频生命周期 Spike | F7 视频断点测试 Hook | F8 保存 | F9 读档续播 | F10 直切 S6 记忆印证链 | F2/F3/F4 直切三场景 | ESC 退出")
 end
 
 function Stop()
@@ -257,6 +264,28 @@ function HandleUpdate(eventType, eventData)
     end
     if InputManager.IsKeyPress(KEY_F5) then
         FlowController.DebugForceComplete()
+    end
+    if InputManager.IsKeyPress(KEY_F8) then
+        print("[main] 调试：保存当前进度到 slot1")
+        FlowController.Persist()
+    end
+    if InputManager.IsKeyPress(KEY_F9) then
+        print("[main] 调试：从 slot1 读档并续播")
+        local loaded = PlayerData.Load()
+        if loaded == nil then
+            print("[main] 读档续播失败：无本地存档")
+        else
+            MediaPlayer.Stop(true)
+            FlowController.Init(loaded)
+            if not FlowController.Resume() then
+                FlowController.Start()
+            end
+        end
+    end
+    if InputManager.IsKeyPress(KEY_F10) then
+        print("[main] 调试：直切 S6 记忆印证链（ch3/P31）")
+        MediaPlayer.Stop(true)
+        FlowController.DebugJumpToParagraph("P31")
     end
     if InputManager.IsKeyPress(KEY_F2) then
         print("[main] 调试：直切场景 chaoyang_gukou（流程状态不变）")

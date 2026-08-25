@@ -11,6 +11,9 @@ local PlayerData = {}
 --- 存档结构版本：加载时校验，低版本走迁移/兜底
 PlayerData.SCHEMA_VERSION = 2
 
+--- 本地存档路径（引擎自动做项目+用户双重隔离；见 engine-docs/recipes/file-storage.md）
+PlayerData.SAVE_FILE = "saves/slot1.json"
+
 --- 生成一份全新的默认 PlayerData
 ---@return table
 function PlayerData.New()
@@ -113,6 +116,66 @@ end
 ---@return table
 function PlayerData.Clone(data)
     return cjson.decode(cjson.encode(data))
+end
+
+--- 保存玩家数据到本地存档（覆盖 slot1）。写前建目录；仅支持单机（WASM 为内存文件系统，刷新即丢）。
+---@param data table 清洗后的 PlayerData
+---@return boolean 是否成功
+function PlayerData.Save(data)
+    if type(data) ~= "table" then
+        print("[PlayerData] 保存失败：data 为空")
+        return false
+    end
+    if not fileSystem:CreateDir("saves") then
+        print("[PlayerData] 保存失败：无法创建 saves/ 目录")
+        return false
+    end
+    local file = File(PlayerData.SAVE_FILE, FILE_WRITE)
+    if file == nil or not file:IsOpen() then
+        print("[PlayerData] 保存失败：无法打开 " .. PlayerData.SAVE_FILE)
+        return false
+    end
+    local ok, json = pcall(cjson.encode, data)
+    if not ok then
+        file:Close()
+        print("[PlayerData] 保存失败：JSON 序列化错误")
+        return false
+    end
+    file:WriteString(json)
+    file:Close()
+    print("[PlayerData] 已保存到 " .. PlayerData.SAVE_FILE)
+    return true
+end
+
+--- 从本地存档读取玩家数据。返回 nil = 无存档或读档失败。
+--- 读到的原始数据会经 Sanitize 做类型检查与默认值兜底。
+---@return table|nil 清洗后的 PlayerData，或 nil
+function PlayerData.Load()
+    if not fileSystem:FileExists(PlayerData.SAVE_FILE) then
+        print("[PlayerData] 无本地存档（" .. PlayerData.SAVE_FILE .. "）")
+        return nil
+    end
+    local file = File(PlayerData.SAVE_FILE, FILE_READ)
+    if file == nil or not file:IsOpen() then
+        print("[PlayerData] 读档失败：无法打开 " .. PlayerData.SAVE_FILE)
+        return nil
+    end
+    local content = file:ReadString()
+    file:Close()
+    if content == nil or content == "" then
+        print("[PlayerData] 读档失败：存档为空")
+        return nil
+    end
+    local ok, raw = pcall(cjson.decode, content)
+    if not ok or type(raw) ~= "table" then
+        print("[PlayerData] 读档失败：JSON 解析错误")
+        return nil
+    end
+    local data = PlayerData.Sanitize(raw)
+    print("[PlayerData] 读档成功 | mediaPos.node=" .. tostring(data.mediaPos.node)
+        .. " video=" .. tostring(data.mediaPos.video)
+        .. " timeSec=" .. tostring(data.mediaPos.timeSec))
+    return data
 end
 
 return PlayerData

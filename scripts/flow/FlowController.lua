@@ -52,6 +52,36 @@ function FlowController.Start()
     EnterParagraph()
 end
 
+--- 读档恢复：按 mediaPos.node 定位段落并续播；找不到则返回 false（回退 Start）。
+--- 段落含 video 时由 MediaPlayer 依 data.mediaPos 做 seek 双确认恢复。
+---@return boolean 是否成功续播
+function FlowController.Resume()
+    if data_ == nil then return false end
+    local mp = data_.mediaPos
+    if type(mp) ~= "table" or mp.node == nil or mp.node == "" then
+        print("[Flow] 读档恢复跳过：mediaPos.node 为空")
+        return false
+    end
+    local ci, pi = FindParagraphIndex(mp.node)
+    if ci == nil then
+        print("[Flow] 读档恢复失败：找不到段落 " .. tostring(mp.node))
+        return false
+    end
+    state_ = { chapterIndex = ci, paragraphIndex = pi, collected = 0 }
+    PlayerController.SetBlossomHandler(FlowController.OnBlossomCollected)
+    print("[Flow] 读档恢复：定位段落 " .. tostring(mp.node) .. "（" .. tostring(mp.video) .. " @ " .. tostring(mp.timeSec) .. "）")
+    EnterParagraph()
+    return true
+end
+
+--- 自动存档钩子：段落完成/场景进入时写磁盘（可被读档恢复覆盖）。
+--- 仅在开头成功续播时才不强开；否则每次 Save 都是覆写 slot1。
+---@return boolean
+function FlowController.Persist()
+    if data_ == nil then return false end
+    return PlayerData.Save(data_)
+end
+
 --- 进入当前段落
 function EnterParagraph()
     ---@type table|nil
@@ -76,6 +106,11 @@ function EnterParagraph()
         MediaPlayer.Stop(true)
         SceneManager.LoadScene(p.scene)
     end
+
+    -- 关键状态落盘：进入新段落即更新 mediaPos.node（当前段落 id），供启动自动续档定位。
+    -- 视频播放时的精确 timeSec 由 MediaPlayer 在断点/暂停/后台离散点持久化。
+    data_.mediaPos.node = p.id
+    PlayerData.Save(data_)
 
     -- 按类型处理
     if p.type == "video" then
@@ -267,6 +302,23 @@ end
 function FlowController.GetCurrentParagraphId()
     if state_ == nil or state_.paragraph == nil then return nil end
     return state_.paragraph.id
+end
+
+--- 调试：跳转到指定段落（FindParagraphIndex 定位），用于直测某条链（如 S6 连续 5 段）。S9 前可保留。
+---@param id string 段落 id
+---@return boolean 是否成功跳转
+function FlowController.DebugJumpToParagraph(id)
+    if data_ == nil then return false end
+    local ci, pi = FindParagraphIndex(id)
+    if ci == nil then
+        print("[Flow] 调试跳转失败：找不到段落 " .. tostring(id))
+        return false
+    end
+    state_ = { chapterIndex = ci, paragraphIndex = pi, collected = 0 }
+    PlayerController.SetBlossomHandler(FlowController.OnBlossomCollected)
+    print("[Flow] 调试跳转：进入段落 " .. tostring(id))
+    EnterParagraph()
+    return true
 end
 
 --- 按段落 id 定位（章索引、段索引）

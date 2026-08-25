@@ -5,7 +5,7 @@
 # 项目记忆索引
 
 项目：桃素洛无幽·素女篇
-当前版本：v0.1.6-S2（P02 老人交互）
+当前版本：v0.1.7-S6（读档恢复 + S6 连续 5 段接线）
 简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；已完成单机 3D 白模骨架、S1 竖屏 9:16 布局调整，S1 真机复盘 R1~R12 全部 ✅；B｜视频生命周期 Spike 代码完成（运行期待真机/WASM 验证）。
 最后巩固：2026-08-22
 
@@ -59,6 +59,8 @@
 | 三地点白模 | `scripts/game/SceneManager.lua` | 9:16 纵深布局 + R12 后墙外移/近景靠边；真机取景 ✅（R4/R11/R12） |
 | 视频恢复/释放 | 后续 media 模块 | Spike 已验证生命周期/Seek/恢复状态机代码路径；正式媒体接入未开始 |
 | 视频生命周期 Spike | `scripts/experiments/VideoSpike.lua` | 代码完成 + LSP 0 error；运行期待真机/WASM 验证 |
+| 读档恢复 | `scripts/config/PlayerData.lua` + `scripts/flow/FlowController.lua` + `scripts/media/MediaPlayer.lua` | 磁盘 Save/Load(slot1) + Resume(mediaPos.node) + 启动自动续档 + F8/F9；LSP 0 error；真机回归待跑 |
+| S6 记忆印证 5 段 | `scripts/config/Chapters.lua`(ch3) + `scripts/media/MediaPlayer.lua` | S6-1..5 占位 + ch3 P31~P36 + 断点三选泛化(信念+1) + F10 直切链；LSP 0 error；真机/WASM 回归待跑 |
 
 ## 避雷清单
 - 一次会话只做一个 S 任务；结束时让 TTM 复盘代码并列待办。
@@ -77,7 +79,11 @@
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
-- 2026-08-26 **S2·P02 走近守桃老人真实交互（本会话）**：把 P02 从"收集 1 个标记点"白模占位改为走近 `Int_oldman` 触发初见台词（`explore` 段新增 `interaction` 字段 = `{trigger, lines}`，FlowController 拦截触发 → 播完完成段落）。初见台词（"远来的客人……"）移至 P02（`DialogueData.oldman_greeting`）；P03 精简为开场之问（`open_choice` 只剩"你相信哪个版本？"，三选仍不计信念）。附带：带 `interaction` 的探索段会忽略沿途桃花等其它拾取，防误完成。LSP（emmylua_check）0 新增 error/warning（`FlowController.lua` 21 条为既有 `state_/data_ may be nil` 风格告警，新行 98-115/178-183 无诊断；`DialogueData/Chapters` 无诊断）。⏳ 真机回归仍需 TTM/用户按 P01→P02→P03 走一遍确认走近触发台词 + 三选正常。
+- 2026-08-26 **S6 剩余验证两组代码（读档恢复 + S6 连续 5 段接线）完成（本会话）**：
+  - **读档恢复**：`PlayerData` 加 `Save/Load`（磁盘 `saves/slot1.json`，项目+用户双层隔离）；`FlowController` 加 `Resume(mediaPos.node)`（定位段落续播）+ 进入段落自动存档；`main` 启动先 `Load()` 命中 mediaPos.node 则自动续档、否则全新开始；`MediaPlayer` 在断点暂停/onPause/后台回调离散落盘（避免 onTimeUpdate 高频写盘）；F8 保存 / F9 读档续播。⚠️ WASM 平台 savedata 在内存文件系统、刷新即丢（需真机验持久化）。
+  - **S6 连续 5 段接线**：`VIDEO_SOURCES` 加 `S6-1..5`（暂同测试占位）；`Chapters` 加 ch3（P31 引导 + P32~P36 5 段记忆印证，各含 `at=4.0` 选择断点 + 三选 + `beliefMap`→信念+1，P36.next=P41 未建段）；`MediaPlayer` 断点三选**泛化**为任意含 `act=choice`+`options` 的段落（保留 debug 测试），`handleBreakpointChoice` 按 `beliefMap` 加信念；F10 直切 ch3/P31 链。
+  - 全部 `emmylua_check` 0 error（改动文件仅既有的 `state_/data_/session_ may be nil`、`Log` callable 等风格告警，无新增错误种类）。⚠️ 正式 S6-x 视频仍为占位，真机只能验证**链路结构**；正式素材到位仅替换 `VIDEO_SOURCES` 映射 + 按《21》§5 校正断点 `at`。
+- 2026-08-26 **S2·P02 走近守桃老人真实交互（上轮）**：把 P02 从"收集 1 个标记点"白模占位改为走近 `Int_oldman` 触发初见台词（`explore` 段新增 `interaction` 字段 = `{trigger, lines}`，FlowController 拦截触发 → 播完完成段落）。初见台词（"远来的客人……"）移至 P02（`DialogueData.oldman_greeting`）；P03 精简为开场之问（`open_choice` 只剩"你相信哪个版本？"，三选仍不计信念）。附带：带 `interaction` 的探索段会忽略沿途桃花等其它拾取，防误完成。LSP（emmylua_check）0 新增 error/warning（`FlowController.lua` 21 条为既有 `state_/data_ may be nil` 风格告警，新行 98-115/178-183 无诊断；`DialogueData/Chapters` 无诊断）。⏳ 真机回归仍需 TTM/用户按 P01→P02→P03 走一遍确认走近触发台词 + 三选正常。
 - 2026-08-25 **S6 断点 Hook 真机全链路通过 ✅（TTM 修复生效）**：`DEBUG_BREAKPOINT_TEST`（at=4.0 三选）真机（21:53）完整闭环——断点命中+mediaPos(`breakpoint=1`)、三选 UI 显示+选中**锁定**（`断点交互选择已锁定 key=release belief=1`）、继续播放、**断点不重复**（`breakpoint=1` 续写至 9.776）、**强制 ENDED**（`达到视频结尾 current=9.962 强制 ENDED`，结尾死循环已修）、`Destroy 存活=0`、同屏=1。✅（修复：① 结尾死循环→强制 ENDED；② 断点无三选 UI→显示三选+onChoose 锁定/记信念/继续。）⏳ 剩余：冻结自愈(后台)、S6 连续 5 段(S6-1..5 未接线)、完整读档恢复(部分测过 02:17 模拟读档)。⚠️ 代码回推：TTM 无凭据，`S6-breakpoint-hook-code.zip` 在 `/workspace/`，需 TTM 交给用户→本地 push 到 qc-caku（勿泄凭据）。
 - 2026-08-25 **S6 断点 Hook 真机复测再确认 ✅（break2.log / 22:21）**：logcat `break2.log`（`/home/pc/桌面/TAPTAP测试图片/`，08-25 22:21，游戏进程 17820）完整闭环：断点命中 `到达断点 #1 | at=4.018`、三选 UI `显示三选` + 选中**锁定**（`断点交互选择已锁定 key=reunion belief=1`，本次选**重逢**，与 21:53 那次 key=release/放手 不同）、继续播放、**断点不重复**（`breakpoint=1` 续写 4.018→9.893）、**强制 ENDED**（`ENDED | 段落 DEBUG_BREAKPOINT_TEST 播放完成`，无结尾死循环）、`Destroy 存活=0`、同屏=1。期间还实测到**后台/前台切换 + 冻结自愈续播**（`AppDidEnterBackground`→`AppDidEnterForebackground | 由冻结自愈负责续播`→`onPlay current=1.138`）。游戏进程 17820 无 Lua error/崩溃。✅ 协作方 ①断点三选UI+锁定、继续播放、断点不重复 三项全部满足；②新真机二维码、③S6 代码 zip 已解决：TTM 提供 `S6-breakpoint-hook-code.zip`（SHA-256 `076bc594b80a0feb86bbbe58976e0d56860be57625e8fb8c07660e7e7ed3efa2`，仅含 3 个 .lua，未混录屏/截图/Spike 文档），本地已合入 2 文件 diff（FlowController/main 改动 + 新增 media/MediaPlayer.lua）并 push 到 qc-caku，提交 `5d0c95b`；冻结自愈（FREEZE_GAP=1.5/MAX_FREEZE_RECOVERIES=3）+ 断点 Hook（at=4.0/F7/断点按钮/三选锁定/信念增量/断点不重复/强制 ENDED/Destroy=0）均已确认在文件内。
 - 2026-08-24 **真机 S6 P01 媒体链路回归通过（核心）**：P01 视频真实播放（`T:04.833 F:145` 测试视频渲染 + `CREATING→READY(dur=10.000)`、`同屏=1`、`写入 mediaPos node=P01 video=S1 breakpoint=0 timeSec=0.186→9.845`、无 Lua error）→ 播完自动进 P02（录屏 t=40/62 = P02 探索场景）。✅ P01 链路过。⏳ 剩余未测：断点+交互(S5/S6-1)、读档恢复、后台冻结自愈、S6 连续 5 段、退出内存回落（已让 TTM 出 S5/S6-1 断点二维码补测）。⚠️ TTM 无 GitHub 凭据 push 失败 → 让 TTM 发 S6 代码文件，本地 push 到 qc-caku（最安全）。
@@ -96,8 +102,8 @@
 
 ## 下一步
 0. **同步管道已就绪（2026-08-25）**：S6 代码已合入并推权威仓（提交 `5d0c95b`）+ 文档整理（`ccb62c7`）。TTM 无 GitHub 账号/无 SSH，已用 **repo 级 fine-grained PAT + `credential.helper store`** 打通直推：此后 TTM `git push github main`，本机 `git fetch github && git rebase github/main` 即同步（不再打 zip/手动合并）；降级用 `git format-patch`。PAT 值只在 TTM 环境，**不进对话**。现行接入说明=素材包/`TTM-共用仓库直推接入说明-方案B凭据.md`；降级=素材包/`TTM-零凭据patch交接.md`；历史接头草稿归档在素材包/`历史交接草稿-勿用/`。
-1. **S6 媒体模块（主要闭环已完成）**：MediaPlayer 状态机 + 断点 Hook（DEBUG_BREAKPOINT_TEST @4.0 三选）+ 冻结自愈 + mediaPos 断点续写/断点不重复/强制 ENDED/显式释放，真机两轮（21:53、22:21 break2.log）全链路 ✅。**剩余验证**：S6 连续 5 段（S6-1..5 未接线，暂不可测）、完整读档恢复（部分测过 02:17 模拟读档）、后台冻结自愈（已在 22:21 复测随切后台/回前台顺带验证到恢复续播）。
-2. **正式素材**：S1~S13 仍为测试占位（`S1_test_mid`），正式素材到位后仅替换 `scripts/media/MediaPlayer.lua` 的 `VIDEO_SOURCES` 映射。
-3. **S9 前移除**：断点/Spike 的 F6/F7/右上角按钮 + 三指手势；正式接入建议同屏 ≤2（按 §2 + mediaPos 断点恢复）；未来顶部 HUD 需重评 SafeAreaView `nativeMenuInset=true`。
-4. **后续主线（下一阶段）**：~~P02 真实老人交互~~（**已完成，见 v0.1.6-S2**）、媒体断点存档、ch2/ch3/ch4（章节系统已预留，`config/Chapters.lua` + `mediaPos` 断点恢复）、P11 五朵桃花收集 vs `Int_*` 交互的接线核对。
+1. **S6 媒体模块（主要闭环已完成）**：MediaPlayer 状态机 + 断点 Hook（DEBUG_BREAKPOINT_TEST @4.0 三选）+ 冻结自愈 + mediaPos 断点续写/断点不重复/强制 ENDED/显式释放，真机两轮（21:53、22:21 break2.log）全链路 ✅。**剩余验证（代码已备好，待真机/WASM 回归）**：S6 连续 5 段（ch3/P32~P36 已接线，F10 直切，S6-x 占位素材）、完整读档恢复（磁盘 Save/Load(slot1) + 启动自动续档 + F8/F9）、后台冻结自愈（22:21 顺带验证恢复续播）。回归项见素材包/`TTM-S6回归粘贴块-读档与5段.md`。
+2. **正式素材**：S1~S13 仍为测试占位（`S1_test_mid`），S6-x 亦占位；正式素材到位后仅替换 `scripts/media/MediaPlayer.lua` 的 `VIDEO_SOURCES` 映射 + 按《21》§5 校正断点 `at`。
+3. **S9 前移除**：断点/Spike 的 F6/F7/右上角按钮 + 三指手势；F8/F9/F10 为存档/读档/S6 链调试键（发布前随断点 Hook 一并清理或并入正式存档菜单）；正式接入建议同屏 ≤2（按 §2 + mediaPos 断点恢复）；未来顶部 HUD 需重评 SafeAreaView `nativeMenuInset=true`。
+4. **后续主线（下一阶段）**：~~P02 真实老人交互~~（**已完成，见 v0.1.6-S2**）、~~媒体断点存档~~（**档案落盘已接入 v0.1.7，存档 UI/菜单待做**）、ch2（洛水阴山）/ch4（终局）接线（ch3/P32~P36 已落地）、P11 五朵桃花收集 vs `Int_*` 交互的接线核对。
 5. 同步规则：`git fetch github && git rebase github/main`；推送走 `git push github main`（**勿用** Maker 仓 origin 的 GitHub 凭据；推送前 `git status` 不带 `.tmp/.scratch/.adb-tools/logs/s1_test` 等垃圾）。git 已可用（`/usr/bin/git`）。

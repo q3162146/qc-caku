@@ -31,6 +31,13 @@ local VIDEO_SOURCES = {
     S11 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S12 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S13 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    -- S6 记忆印证 5 段（ch3/P32~P36）：正式 S6-x 素材未到位，先占位同测试视频；
+    --   正式素材到位后逐项替换（仍走"播完或断点暂停 → 解读三选 → 信念+1"）。
+    ["S6-1"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    ["S6-2"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    ["S6-3"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    ["S6-4"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    ["S6-5"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
 }
 
 local SEEK_TOLERANCE = 0.15
@@ -79,6 +86,87 @@ local BREAKPOINT_TEST_PARAGRAPH = {
 
 local function isBreakpointTestSession()
     return session_ ~= nil and session_.paragraph.id == BREAKPOINT_TEST_PARAGRAPH.id
+end
+
+--- 当前段落当前的断点定义（按 breakpointIndex 取；无则 nil）
+---@return table|nil
+local function currentBreakpoint()
+    if session_ == nil or session_.paragraph == nil then return nil end
+    local bps = session_.paragraph.breakpoints or {}
+    return bps[session_.breakpointIndex]
+end
+
+--- 该段落是否含"选择型"断点（act=choice 且有 options）——用于构建/显示三选按钮
+---@return boolean
+local function paragraphHasChoiceBreakpoint()
+    if session_ == nil or session_.paragraph == nil then return false end
+    local bps = session_.paragraph.breakpoints or {}
+    for _, bp in ipairs(bps) do
+        if bp.act == "choice" and bp.options ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
+--- 取段落第一个"选择型"断点（构建按钮用；本作每段一个选择断点）
+---@return table|nil
+local function getChoiceBreakpoint()
+    if session_ == nil or session_.paragraph == nil then return nil end
+    local bps = session_.paragraph.breakpoints or {}
+    for _, bp in ipairs(bps) do
+        if bp.act == "choice" and bp.options ~= nil then
+            return bp
+        end
+    end
+    return nil
+end
+
+local function renderBreakpointChoices()
+    if session_ == nil or session_.choiceButtons == nil then return end
+    if not paragraphHasChoiceBreakpoint() then return end
+    local bp = currentBreakpoint()
+    if session_.maskText ~= nil then
+        session_.maskText:SetText((bp and bp.prompt) or "断点交互，请选择")
+    end
+    if session_.breakpointButton ~= nil then
+        session_.breakpointButton:SetVisible(false)
+        session_.breakpointButton:SetDisabled(true)
+    end
+    for _, button in ipairs(session_.choiceButtons) do
+        button:SetVisible(true)
+    end
+    session_.phase = "PAUSED_AT_BREAKPOINT"
+    log("断点读档 Seek 双确认完成 | 断点不重复触发 | 显示三选")
+end
+
+--- 取当前 belief 轴数值（仅供日志）
+---@param axis string
+---@return number
+local function scene_belief_value(axis)
+    local belief = session_ and session_.data and session_.data.belief
+    if belief == nil then return 0 end
+    return belief[axis] or 0
+end
+
+local function handleBreakpointChoice(key)
+    if session_ == nil or session_.phase ~= "PAUSED_AT_BREAKPOINT" then return end
+    if session_.choiceLocked then return end
+    session_.choiceLocked = true
+    for _, button in ipairs(session_.choiceButtons or {}) do
+        button:SetDisabled(true)
+    end
+
+    -- 按当前断点 beliefMap 向对应信念轴 +1（数据驱动）；无 beliefMap 时键名即轴名
+    local bp = currentBreakpoint()
+    local axis = (bp and bp.beliefMap and bp.beliefMap[key]) or key
+    local belief = session_.data and session_.data.belief
+    if axis ~= nil and belief ~= nil and belief[axis] ~= nil then
+        belief[axis] = belief[axis] + 1
+    end
+    log("断点交互选择已锁定 | key=" .. tostring(key)
+        .. " | belief=" .. tostring(axis and scene_belief_value(axis) or 0))
+    resumeFromBreakpoint()
 end
 
 local function log(message)
@@ -167,6 +255,13 @@ local function teardown(releaseRoot)
     end
 end
 
+--- 把当前 mediaPos 落盘（离散点：断点暂停/onPause/后台回调），供启动自动续档。
+--- 不在 onTimeUpdate 每帧调用，避免高频写盘。
+local function persistMediaPosition()
+    if session_ == nil or session_.data == nil then return end
+    PlayerData.Save(session_.data)
+end
+
 ---@param eventType string|StringHash
 ---@param eventData? table
 local function handleBackground(eventType, eventData)
@@ -175,6 +270,7 @@ local function handleBackground(eventType, eventData)
     if player_ ~= nil and player_:IsPlaying() then
         writeMediaPosition(session_.data, session_.paragraph, session_.breakpointIndex,
             player_:GetCurrentTime())
+        persistMediaPosition()
     end
 end
 
@@ -240,41 +336,6 @@ local function failPlayback(reason)
     restoreRoot()
 end
 
-local function renderBreakpointTestChoices()
-    if not isBreakpointTestSession() then return end
-    if session_.choiceButtons == nil then return end
-    if session_.maskText ~= nil then
-        session_.maskText:SetText("断点交互，请选择")
-    end
-    if session_.breakpointButton ~= nil then
-        session_.breakpointButton:SetVisible(false)
-        session_.breakpointButton:SetDisabled(true)
-    end
-    for _, button in ipairs(session_.choiceButtons) do
-        button:SetVisible(true)
-    end
-    session_.phase = "PAUSED_AT_BREAKPOINT"
-    log("断点读档 Seek 双确认完成 | 断点不重复触发 | 显示三选")
-end
-
-local function handleBreakpointTestChoice(key)
-    if not isBreakpointTestSession() or session_.phase ~= "PAUSED_AT_BREAKPOINT" then return end
-    if session_.choiceLocked then return end
-    session_.choiceLocked = true
-    for _, button in ipairs(session_.choiceButtons or {}) do
-        button:SetDisabled(true)
-    end
-
-    local deltas = { reunion = "reunion", release = "release", legend = "legend" }
-    local axis = deltas[key]
-    if axis ~= nil and breakpointTestData_ ~= nil then
-        breakpointTestData_.belief[axis] = breakpointTestData_.belief[axis] + 1
-    end
-    log("断点交互选择已锁定 | key=" .. tostring(key)
-        .. " | belief=" .. tostring(axis and breakpointTestData_.belief[axis] or 0))
-    resumeFromBreakpoint()
-end
-
 local function simulateBreakpointRead()
     if not isBreakpointTestSession() then return end
     log("断点测试：模拟读档 | 保留 mediaPos.timeSec="
@@ -287,11 +348,11 @@ end
 
 local function revealAndPlay()
     if session_ == nil or player_ == nil then return end
-    if isBreakpointTestSession() and session_.breakpointIndex >= 1 then
+    if paragraphHasChoiceBreakpoint() and session_.breakpointIndex >= 1 then
         player_:Pause()
         session_.recoveryConfirmed = true
         showMask()
-        renderBreakpointTestChoices()
+        renderBreakpointChoices()
         return
     end
     if session_.breakpointButton ~= nil then
@@ -402,17 +463,29 @@ local function pauseAtBreakpoint(index, time)
     session_.phase = "PAUSED_AT_BREAKPOINT"
     session_.breakpointIndex = index
     writeMediaPosition(session_.data, session_.paragraph, index, time)
+    persistMediaPosition()
     player_:Pause()
     showMask()
-    if session_.maskText ~= nil then
-        session_.maskText:SetText(isBreakpointTestSession() and "断点命中：点击模拟读档恢复" or "剧情断点")
-    end
-    if session_.breakpointButton ~= nil then
-        session_.breakpointButton:SetText("模拟读档恢复")
-        session_.breakpointButton:SetVisible(true)
-    end
+    -- 选择型断点：显示三选（真实段落 vs 断点测试均可）；断点测试额外保留"模拟读档恢复"按钮
     if isBreakpointTestSession() then
-        renderBreakpointTestChoices()
+        if session_.maskText ~= nil then
+            session_.maskText:SetText("断点命中：点击模拟读档恢复")
+        end
+        if session_.breakpointButton ~= nil then
+            session_.breakpointButton:SetText("模拟读档恢复")
+            session_.breakpointButton:SetVisible(true)
+        end
+        renderBreakpointChoices()
+    elseif paragraphHasChoiceBreakpoint() then
+        renderBreakpointChoices()
+    else
+        if session_.maskText ~= nil then
+            session_.maskText:SetText("剧情断点")
+        end
+        if session_.breakpointButton ~= nil then
+            session_.breakpointButton:SetText("继续")
+            session_.breakpointButton:SetVisible(true)
+        end
     end
     log("到达断点 #" .. tostring(index) .. " | at=" .. formatTime(time)
         .. " | 已暂停并等待交互")
@@ -477,6 +550,7 @@ local function onPause(self)
     if session_ == nil or session_.player ~= self then return end
     local time = self:GetCurrentTime()
     writeMediaPosition(session_.data, session_.paragraph, session_.breakpointIndex, time)
+    persistMediaPosition()
     log("onPause | current=" .. formatTime(time))
 end
 
@@ -603,11 +677,28 @@ function MediaPlayer.Play(paragraph, data)
             end
         end,
     }
+    -- 选择型断点：为任意含 act=choice 且有 options 的段落构建三选按钮
+    ---@type table|nil { at: number, act: string, options: table, choiceOrder: table, beliefMap: table, prompt?: string }
+    local choiceBreakpoint = nil
+    local bpList = paragraph.breakpoints or {}
+    for _, bp in ipairs(bpList) do
+        if bp.act == "choice" and bp.options ~= nil then
+            choiceBreakpoint = bp
+            break
+        end
+    end
     local choiceButtons = {}
-    if paragraph.id == BREAKPOINT_TEST_PARAGRAPH.id then
-        for _, key in ipairs(BREAKPOINT_TEST_PARAGRAPH.breakpoints[1].choiceOrder) do
+    if choiceBreakpoint ~= nil and choiceBreakpoint.options ~= nil then
+        local order = choiceBreakpoint.choiceOrder
+        if order == nil then
+            order = {}
+            for key in pairs(choiceBreakpoint.options) do
+                order[#order + 1] = key
+            end
+        end
+        for _, key in ipairs(order) do
             local button = UI.Button {
-                text = BREAKPOINT_TEST_PARAGRAPH.breakpoints[1].options[key],
+                text = choiceBreakpoint.options[key],
                 variant = "secondary",
                 width = "100%",
                 height = 52,
@@ -615,7 +706,7 @@ function MediaPlayer.Play(paragraph, data)
                 zIndex = 100,
                 visible = false,
                 onClick = function()
-                    handleBreakpointTestChoice(key)
+                    handleBreakpointChoice(key)
                 end,
             }
             choiceButtons[#choiceButtons + 1] = button
@@ -767,7 +858,7 @@ function MediaPlayer.ToggleBreakpointTest()
     end
     breakpointTest_ = true
     breakpointTestData_ = PlayerData.Sanitize(nil)
-    breakpointTestChoiceHandler_ = handleBreakpointTestChoice
+    breakpointTestChoiceHandler_ = handleBreakpointChoice
     breakpointTestResumeHandler_ = resumeFromBreakpoint
     log("断点测试 Hook 启动 | at=4.0 | 三选 | F7/断点按钮")
     MediaPlayer.Play(BREAKPOINT_TEST_PARAGRAPH, breakpointTestData_)

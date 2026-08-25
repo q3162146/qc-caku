@@ -126,7 +126,127 @@ local Chapters = {
             },
         },
     },
-    -- ch2 第四回·洛水阴 / ch3 第五回·记忆印证 / ch4 尾声·终局：演出接入会话补充
+    {
+        -- ch3 第五回·记忆印，六艺寻（S6 记忆印证 5 段连播接线；正式 S6-x 视频未到位，用占位素材）
+        id = "ch3",
+        title = "第五回·记忆印，六艺寻",
+        seal = "metal",            -- 印章：金（与 ch1 五行的"金"区隔仅作占位，章节卡样式后续定）
+        paragraphs = {
+            -- P31 引导对话（进入六艺试炼前）
+            {
+                id = "P31",
+                type = "dialogue",
+                npc = "守桃老人",
+                lines = "memory_guide",
+                next = "P32",
+            },
+            -- P32~P36 记忆印证×5：每段视频 S6-x + 播完/断点暂停 → 解读三选（信念+1）
+            -- 断点 at 为占位（正式 S6-x 到位后按《21》§5 真机校正）
+            {
+                id = "P32",
+                type = "video",
+                video = "S6-1",
+                breakpoints = {
+                    {
+                        at = 4.0,
+                        act = "choice",
+                        prompt = "礼·素女为什么没有拦他？",
+                        options = {
+                            reunion = "她懂他的执着",
+                            release = "她怕拦了就走不成",
+                            legend = "她只等故事发生",
+                        },
+                        choiceOrder = { "reunion", "release", "legend" },
+                        beliefMap = { reunion = "reunion", release = "release", legend = "legend" },
+                    },
+                },
+                scene = "luoshui_yinshan",
+                next = "P33",
+            },
+            {
+                id = "P33",
+                type = "video",
+                video = "S6-2",
+                breakpoints = {
+                    {
+                        at = 4.0,
+                        act = "choice",
+                        prompt = "乐·那曲琴声听成了什么？",
+                        options = {
+                            reunion = "等你回来",
+                            release = "一路平安",
+                            legend = "桃花落在水面",
+                        },
+                        choiceOrder = { "reunion", "release", "legend" },
+                        beliefMap = { reunion = "reunion", release = "release", legend = "legend" },
+                    },
+                },
+                next = "P34",
+            },
+            {
+                id = "P34",
+                type = "video",
+                video = "S6-3",
+                breakpoints = {
+                    {
+                        at = 4.0,
+                        act = "choice",
+                        prompt = "射·那支箭穿过桃花枝，准还是不准？",
+                        options = {
+                            reunion = "偏了半寸，心里多了个人",
+                            release = "心无旁骛，一箭中的",
+                            legend = "花落才重要",
+                        },
+                        choiceOrder = { "reunion", "release", "legend" },
+                        beliefMap = { reunion = "reunion", release = "release", legend = "legend" },
+                    },
+                },
+                next = "P35",
+            },
+            {
+                id = "P35",
+                type = "video",
+                video = "S6-4",
+                breakpoints = {
+                    {
+                        at = 4.0,
+                        act = "choice",
+                        prompt = "御·回望谷口时看见什么？",
+                        options = {
+                            reunion = "一抹素衣身影",
+                            release = "谷口已经空了",
+                            legend = "满谷的桃花",
+                        },
+                        choiceOrder = { "reunion", "release", "legend" },
+                        beliefMap = { reunion = "reunion", release = "release", legend = "legend" },
+                    },
+                },
+                next = "P36",
+            },
+            {
+                id = "P36",
+                type = "video",
+                video = "S6-5",
+                breakpoints = {
+                    {
+                        at = 4.0,
+                        act = "choice",
+                        prompt = "书/数·那味药是「当归」还是「不归」？",
+                        options = {
+                            reunion = "当归，应当归家",
+                            release = "不归，本没打算回头",
+                            legend = "药方上有个没写完的话",
+                        },
+                        choiceOrder = { "reunion", "release", "legend" },
+                        beliefMap = { reunion = "reunion", release = "release", legend = "legend" },
+                    },
+                },
+                -- ch4 尾声尚未接线，此处指向未建段 P41（CompleteParagraph 会打印"找不到下一段"作为收尾提示）
+                next = "P41",
+            },
+        },
+    },
+    -- ch2 第四回·洛水阴 / ch4 尾声·终局：演出接入会话补充
 }
 
 return Chapters
