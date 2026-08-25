@@ -193,7 +193,7 @@ end
 --- 创建一个 VideoPlayer widget（带回调挂钩），并登记进计数
 ---@param src string
 ---@param hooks table onReady/onPlay/onPause/onEnded/onTimeUpdate/onLoadError
----@return table w widget
+---@return VideoPlayerWidget w widget
 local function makeWidget(src, hooks)
     hooks = hooks or {}
     local w = Video.VideoPlayer {
@@ -222,12 +222,12 @@ local function makeWidget(src, hooks)
 end
 
 --- 在父节点下加一块视频区域（1 块区域 = 1 个播放器 + 1 个加载遮罩）
----@param parent table
+---@param parent Panel
 ---@param src string
 ---@param hooks table
 ---@param maskText string
 ---@param maskId? string
----@return table w, table mask, table area
+---@return VideoPlayerWidget w, Panel mask, Panel area
 local function addVideoArea(parent, src, hooks, maskText, maskId)
     local area = UI.Panel {
         flex = 1,
