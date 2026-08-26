@@ -30,6 +30,10 @@ local yaw_ = 0
 local pitch_ = 0
 ---@type function|nil
 local blossomHandler_ = nil
+---@type boolean 是否启用作近拾取（仅当前流段为 explore 时 true，由 FlowController 维护）
+local pickupsEnabled_ = false
+---@type table 已上报"进入半径"的标记节点（边沿触发，离开半径即重置，防每帧刷屏）
+local inRadius_ = {}
 
 local MOUSE_SENSITIVITY = 0.15   -- 鼠标灵敏度（度/像素）
 local PITCH_LIMIT = 80.0
@@ -133,6 +137,15 @@ function PlayerController.SetBlossomHandler(handler)
     blossomHandler_ = handler
 end
 
+--- 是否启用作近拾取/交互（仅当前流段为 explore 时 true，FlowController 进入段落时维护）
+---@param enabled boolean
+function PlayerController.SetPickupsEnabled(enabled)
+    pickupsEnabled_ = enabled ~= false
+    if not pickupsEnabled_ then
+        inRadius_ = {}   -- 退出 explore 时清空进入半径记录
+    end
+end
+
 --- 每帧更新：输入 → 规则（移动/视角）
 ---@param timeStep number
 function PlayerController.Update(timeStep)
@@ -162,7 +175,9 @@ function PlayerController.Update(timeStep)
     end
 
     -- 走近拾取/交互：真机 KCC 驱动不触发全局碰撞事件，故改用距离轮询识别 Blossom_/Int_ 标记。
-    if blossomHandler_ ~= nil and scene_ ~= nil and playerNode_ ~= nil then
+    -- 仅当前流段为 explore 时启用（pickupsEnabled_，由 FlowController 维护）；且"进入半径"边沿触发（离开重置，防每帧刷屏/非 explore 不刷屏）。
+    -- 标记/光柱的移除由 FlowController.OnBlossomCollected 在确认采集后执行（对话中不消费，节点保留）。
+    if pickupsEnabled_ and blossomHandler_ ~= nil and scene_ ~= nil and playerNode_ ~= nil then
         local px, pz = playerNode_.worldPosition.x, playerNode_.worldPosition.z
         local children = scene_:GetChildren(true)
         for _, child in ipairs(children) do
@@ -173,10 +188,13 @@ function PlayerController.Update(timeStep)
             if key ~= nil then
                 local wx, wz = child.worldPosition.x, child.worldPosition.z
                 local dx, dz = wx - px, wz - pz
-                if dx * dx + dz * dz <= PICKUP_RADIUS * PICKUP_RADIUS then
+                local inR = (dx * dx + dz * dz <= PICKUP_RADIUS * PICKUP_RADIUS)
+                if inR and not inRadius_[child] then
+                    inRadius_[child] = true   -- 进入半径：边沿触发，只上报一次
                     print("[PlayerController] 拾取标记: " .. key)
                     blossomHandler_(key, child)
-                    break   -- 一次只上报一个（防对话中连续触发）
+                elseif not inR then
+                    inRadius_[child] = nil   -- 离开半径：重置，下次进入再上报
                 end
             end
         end

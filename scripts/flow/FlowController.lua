@@ -113,6 +113,8 @@ function EnterParagraph()
     PlayerData.Save(data_)
 
     -- 按类型处理
+    -- 仅 explore 段启用作近拾取/交互（防其它段刷屏），由 PlayerController 维护进入半径边沿
+    PlayerController.SetPickupsEnabled(p.type == "explore")
     if p.type == "video" then
         print("[Flow] 视频段落 " .. (p.video or "?") .. " → MediaPlayer")
         MediaPlayer.Play(p, data_)
@@ -267,7 +269,16 @@ function FlowController.OnBlossomCollected(key, node)
             print("[Flow] 拾取独白 " .. key .. "（" .. tostring(monoKey) .. "）")
             DialogueUI.ShowDialogue(dlg)
             return
+        else
+            -- 兜底：定位"独白数据缺失"（如 wood 独白未显示），记录 p 上下文
+            print("[Flow] 独白数据缺失: key=" .. tostring(key) .. " monoKey=" .. tostring(monoKey)
+                .. " p=" .. tostring(p.id) .. " type=" .. tostring(p.type))
         end
+    else
+        -- 兜底：定位"某五行无独白映射"，记录 p 上下文
+        print("[Flow] 无独白映射: key=" .. tostring(key)
+            .. " p=" .. tostring(p.id) .. " type=" .. tostring(p.type)
+            .. " hasMonologue=" .. tostring(p.blossomMonologue ~= nil))
     end
     finish()
 end
