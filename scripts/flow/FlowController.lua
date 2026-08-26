@@ -229,20 +229,39 @@ function FlowController.OnBlossomCollected(key)
     if data_.blossoms[key] ~= nil then
         data_.blossoms[key] = true
     end
+    if data_.journal ~= nil then
+        data_.journal[key] = true
+    end
     state_.collected = state_.collected + 1
     print("[Flow] 桃花进度 " .. state_.collected .. "/" .. state_.collectCount)
 
-    if state_.collected >= state_.collectCount then
-        -- 统一完成结果（玩法模块契约）：按段落表数据驱动（《21》§2 on_complete）
-        -- 采花本身不加信念（信念来自记忆印证/终局，见《05》§8）
-        local onComplete = p.on_complete or {}
-        CompleteParagraph({
-            done = true,
-            beliefDelta = p.beliefDelta,        -- 段落表声明才有
-            unlocked = onComplete.unlock,       -- 段落表声明才有（如 P11 → {"P12"}）
-            flag = p.flag,                      -- 段落表声明才有（跨段落标记）
-        })
+    -- 达到收集数后完成（拾取触发的独白播完后再判，避免与探索串台）
+    local finish = function()
+        if state_.collected >= state_.collectCount then
+            -- 统一完成结果（玩法模块契约）：按段落表数据驱动（《21》§2 on_complete）
+            -- 采花本身不加信念（信念来自记忆印证/终局，见《05》§8）
+            local onComplete = p.on_complete or {}
+            CompleteParagraph({
+                done = true,
+                beliefDelta = p.beliefDelta,        -- 段落表声明才有
+                unlocked = onComplete.unlock,       -- 段落表声明才有（如 P11 → {"P12"}）
+                flag = p.flag,                      -- 段落表声明才有（跨段落标记）
+            })
+        end
     end
+
+    -- 五行→独白（占位映射）：拾取触发素女内心独白，播完再判完成
+    local monoKey = (p.blossomMonologue ~= nil) and p.blossomMonologue[key]
+    if monoKey ~= nil then
+        local spec = DialogueData.Get(monoKey)
+        if spec ~= nil then
+            local dlg = { npc = spec.npc, lines = spec.lines, onDone = finish }
+            print("[Flow] 拾取独白 " .. key .. "（" .. tostring(monoKey) .. "）")
+            DialogueUI.ShowDialogue(dlg)
+            return
+        end
+    end
+    finish()
 end
 
 --- 完成当前段落：应用结果 → 按契约推进到下一段

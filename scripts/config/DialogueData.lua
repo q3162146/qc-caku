@@ -147,6 +147,13 @@ local Data = {
         },
         choiceOrder = { "offer", "leave" },
     },
+
+    -- P11 五行桃花独白（素女内心独白，拾取触发；五行↔地点映射为占位，见《02》）
+    blossom_wood = { npc = "素女", lines = { "春来春去，树下的誓言，我一直记着。" } },
+    blossom_fire = { npc = "素女", lines = { "他说，桃花香的时候，就会回来。" } },
+    blossom_earth = { npc = "素女", lines = { "若他知道，有人把我们的故事讲了十二年，会不会笑我痴？" } },
+    blossom_metal = { npc = "素女", lines = { "登高望远，日日红妆，只待君归。" } },
+    blossom_water = { npc = "素女", lines = { "每天打水，都忍不住望一眼那条出谷的路。" } },
 }
 
 --- 取一段对话数据

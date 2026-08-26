@@ -104,9 +104,13 @@ local Chapters = {
                 scene = "chaoyang_gukou",
                 goal = "collect_5_blossoms",
                 collectCount = 5,
-                hotspots = { "valley_gate", "peach_tree", "cliff", "well", "oldman_house" },
+                hotspots = { "wood", "fire", "earth", "metal", "water" },  -- 场景 Blossom_<五行> 标记（与《02》五地独白做占位映射）
+                blossomMonologue = {  -- 五行→独白键（占位映射，见 FlowController.OnBlossomCollected）
+                    wood = "blossom_wood", fire = "blossom_fire", earth = "blossom_earth",
+                    metal = "blossom_metal", water = "blossom_water",
+                },
                 on_complete = { unlock = { "P12" } },
-                desc = "收集 5 朵桃花（五行：木火土金水）",
+                desc = "收集 5 朵桃花（五行：木火土金水；拾取触发素女内心独白）",
                 next = "P12",
             },
             -- P12 对话：前往洛水阴山
