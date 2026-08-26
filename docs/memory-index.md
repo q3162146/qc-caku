@@ -5,7 +5,7 @@
 # 项目记忆索引
 
 项目：桃素洛无幽·素女篇
-当前版本：v0.1.7-S6（读档恢复 + S6 连续 5 段接线）
+当前版本：v0.2.0-GameHUD（触屏摇杆+触摸视角接入）
 简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；已完成单机 3D 白模骨架、S1 竖屏 9:16 布局调整，S1 真机复盘 R1~R12 全部 ✅；B｜视频生命周期 Spike 代码完成（运行期待真机/WASM 验证）。
 最后巩固：2026-08-22
 
@@ -79,6 +79,8 @@
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
+- 2026-08-27 **GameHUD 触屏控制接入核对 + 构建出码（c55662d，含 f117712/6819499）**：远端已接 `GameHUD.Initialize/SetControls/Create({enableJump,enableRun})/EnableTouchLook({camera})`；`InputManager.DisableScreenJoystick()` 调 `PlatformInputManager.DisableTouchInput()`（仅隐藏平台默认屏上摇杆，不禁原始触摸，无双摇杆）；Update 移动读 controls（摇杆）+ WASD 兜底 OR 叠加；对话期 `ClearMovement()` 锁移动。本地验证：LSP 0 Error、官方构建成功、140 帧 `Lua runtime error=0`，日志含 `[GameHUD] Initialized` / `[GameHUD] Touch look enabled`；二维码已生成待真机回归（摇杆移动/触摸视角/跳跃跑步/对话锁移动/P02 走近/P11 采花×5）。
+- 2026-08-26 **主线整链真机回归通过（8efbdee）**：ch0 楔子→ch1 收集→ch2 洛水阴→ch3 六艺记忆印证→ch4 终局→结局全链路真机走通；非采集段全通过，采集段（P02 走近/P11 采花）因手机无移动控制被跳过 → 由 GameHUD 触屏控制修复（6819499）。
 - 2026-08-26 **手机触屏移动+视角已接入（GameHUD，本会话）**：按 `templates/scaffold-3d-character` 集成了真机移动控制（提交 `6819499`）。`PlayerController`：`GameHUD.Initialize()+SetControls(character_.controls)+Create({enableJump,enableRun})+EnableTouchLook({camera=tpCamera_:GetNode()})`；`Update` 移动改读 `character_.controls`（摇杆写）+ 键盘 WASD 作 PC 兜底（OR 叠加不覆盖摇杆值）；相机 yaw/pitch 读 `controls`（PC 鼠标增量叠加，移动端触摸视角写 controls）；新增 `ClearMovement()`（对话期锁移动）。`InputManager` 加 `DisableScreenJoystick()`（关平台默认屏上摇杆避免双摇杆）。`main.lua` 初始化后 `DisableScreenJoystick()`、对话打开时 `PlayerController.ClearMovement()`。LSP(emmylua_check) 0 新增 error。⚠️ **需真机验证**：摇杆移动、触摸视角、跳跃/跑步、对话期锁移动、无双摇杆；验证通过后 P02/P11 采集段应可自然完成。
 - 2026-08-26 **主线整链真机回归：非采集段全部通过，采集段被真机无移动控制卡住（本会话）**：真机 `break.log`(20:43) 走完 P01→ch2→ch3→ch4→结局：P03 开场三选、P04~P07 讲述、P12、**ch2 P22 无面鬼互动三选**、**ch3 P32~P36 断点三选(信念+1)**、**ch4 P42 终局抉择→按最高信念轴出 P44(S8 放手)→P99** 全部 ✅，`显示三选`/`断点交互选择已锁定`/`Destroy=0` 均正常，**0 Lua 崩溃**。❌ **只有 P02 走近老人 + P11 采集五桃花被 完成 按钮强制跳过**（`调试：强制完成段落 P02/P11`）——根因：**手机无移动控制**，`PlayerController` 只读 `KEY_W/A/S/D`(键盘) + `GetMouseDelta`(鼠标) 驱动 `character_.controls`，而平台 `InputManager` 在触屏端自动启用的**屏上摇杆从未被读取**（`PlayerController.Update` 每帧用键盘覆盖 `controls`），故玩家在手机**无法移动/转视角** → 无法走近 `Int_oldman` 或拾取桃花。✅ 其余链路（选择/视频/对话/终局分叉）不依赖移动，故正常。**推荐修复**：按 `templates/scaffold-3d-character.lua` 集成 `urhox-libs.UI.GameHUD`（`GameHUD.Initialize()`→`SetControls(character_.controls)`→`Create({enableJump,enableRun})`→`EnableTouchLook({camera=tpCamera_:GetNode()})`），摇杆写 `character_.controls`(移动)+触摸视角；并**关闭平台默认屏上摇杆**避免双摇杆；`PlayerController.Update` 改为不再用键盘覆盖 `controls`（PC 靠 GameHUD keyBinding=WASD，鼠标控制视角）。⚠️ 该修复需真机验证，未在本会话盲改（避免破坏已验证链路）。
 - 2026-08-26 **主线整链真机回归粘贴块（本会话）**：主线结构已全通，起草了给 TTM 的**首次整链真机回归**粘贴块（`素女篇-准备期素材包/TTM-主线整链真机回归粘贴块.md`），覆盖 P11 拾取独白、ch2 无面鬼互动、ch4 终局按信念轴分叉及全程日志核对要点。另修正 ch4 P41 献花前/P42 终局抉择 `scene=chaoyang_gukou`（返回朝阳谷面对无涕桃，提交 `f708e58`）。⏳ 待 TTM 真机整链回归确认。
