@@ -22,22 +22,27 @@ local player_ = nil      -- PlayerController 实例（提供 SetPosition）
 local sceneRoot_ = nil
 ---@type string
 local currentScene_ = ""
+---@type function|nil
+local onSceneLoaded_ = nil
 
 --- 场景氛围配置（雾色/环境光，随场景切换）
 local SCENE_MOOD = {
     chaoyang_gukou = {
+        name = "朝阳谷口",
         ambient = Color(0.42, 0.40, 0.42),
         fog = Color(0.92, 0.85, 0.78),
         fogStart = 30.0,
         fogEnd = 120.0,
     },
     gu_nei_taolin = {
+        name = "谷内桃林",
         ambient = Color(0.36, 0.38, 0.36),
         fog = Color(0.80, 0.82, 0.74),
         fogStart = 25.0,
         fogEnd = 90.0,
     },
     luoshui_yinshan = {
+        name = "洛水阴山",
         ambient = Color(0.30, 0.30, 0.36),
         fog = Color(0.42, 0.44, 0.50),
         fogStart = 12.0,
@@ -51,6 +56,12 @@ local SCENE_MOOD = {
 function SceneManager.Init(scene, player)
     scene_ = scene
     player_ = player
+end
+
+--- 注册"场景加载完成"回调（用于显示场景名横幅等）
+---@param cb function|nil function(name: string)
+function SceneManager.SetOnSceneLoaded(cb)
+    onSceneLoaded_ = cb
 end
 
 --- 加载指定场景（销毁旧场景内容并重建）
@@ -76,6 +87,11 @@ function SceneManager.LoadScene(sceneName)
 
     -- 应用氛围
     ApplyMood(SCENE_MOOD[sceneName])
+
+    -- 场景名回传（用于顶部横幅等）
+    if onSceneLoaded_ ~= nil then
+        onSceneLoaded_(SCENE_MOOD[sceneName].name or sceneName)
+    end
 
     -- 构建白模
     local spawn = nil
@@ -154,6 +170,8 @@ function BuildChaoyangGukou(root)
     WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
         { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true,
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
+    -- 守桃老人辨识光柱（白模下让人一眼看出"走近这位老人交互"）
+    WhiteBox.Beacon(scene_, Vector3(oldManPos.x, 0.6, oldManPos.z), { 0.95, 0.82, 0.45 }, 2.4)
 
     -- 边界墙
     -- 边界墙（R12 根因修复：后墙外移 25.5→32，给第三人称相机留 space；distance 6.8 不被墙碰撞压回）

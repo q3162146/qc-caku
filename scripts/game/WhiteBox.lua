@@ -186,12 +186,26 @@ end
 ---@param key string 五行键（wood/fire/earth/metal/water）
 ---@param rgb table
 function WhiteBox.BlossomMarker(scene, position, key, rgb)
-    return WhiteBox.Sphere(scene, "Blossom_" .. key, position, 0.6, rgb, {
+    local node = WhiteBox.Sphere(scene, "Blossom_" .. key, position, 0.6, rgb, {
         layer = WhiteBox.LAYER_TRIGGER,
         mask = WhiteBox.LAYER_PLAYER,
         trigger = true,
         unlit = true,
     })
+    -- 光柱：醒目标识"这是可采撷的桃花"，解决白模下难分辨的问题
+    WhiteBox.Beacon(scene, position, rgb)
+    return node
+end
+
+--- 采集/交互辨识光柱：细长自发光圆柱，白模下让人一眼看出"这里有可采撷/可交互目标"
+---@param scene Scene
+---@param position Vector3 目标参考位置（取其 x/z，y 作为光柱底部）
+---@param rgb table
+---@param height? number 光柱高（默认 1.5）
+function WhiteBox.Beacon(scene, position, rgb, height)
+    local h = height or 1.5
+    return WhiteBox.Cylinder(scene, "Beacon", Vector3(position.x, position.y + h / 2, position.z),
+        0.10, h, rgb, { unlit = true, alpha = 0.85, collision = false })
 end
 
 return WhiteBox

@@ -289,6 +289,30 @@ function Start()
         data = PlayerData.Sanitize(nil)
     end
     CreateVideoSpikeTrigger()
+
+    -- 场景名横幅（顶部居中，随场景切换更新；白模下辨识当前场景用）——S9 前可保留/移除
+    local bannerPanel = UI.Panel {
+        position = "absolute",
+        top = 0, left = 0, right = 0,
+        height = 60,
+        justifyContent = "center",
+        alignItems = "center",
+        pointerEvents = "none",
+        zIndex = 85,
+    }
+    local sceneBanner = UI.Label {
+        text = "「朝阳谷口」",
+        fontSize = 20,
+        fontColor = { 255, 245, 230, 255 },
+    }
+    bannerPanel:AddChild(sceneBanner)
+    UI.GetRoot():AddChild(bannerPanel)
+    SceneManager.SetOnSceneLoaded(function(name)
+        if sceneBanner ~= nil then
+            sceneBanner:SetText("「" .. tostring(name) .. "」")
+        end
+    end)
+
     FlowController.Init(data)
     if not FlowController.Resume() then
         FlowController.Start()
