@@ -12,6 +12,7 @@
 local ThirdPersonCamera = require "urhox-libs.Camera.ThirdPersonCamera"
 local InputManager = require "game.InputManager"
 local WhiteBox = require "game.WhiteBox"
+local GameHUD = require "urhox-libs.UI.GameHUD"
 
 local PlayerController = {}
 
@@ -95,6 +96,13 @@ function PlayerController.Create(scene)
     -- 鼠标相对模式（视角控制）
     InputManager.SetRelativeMouseMode()
 
+    -- 真机触屏控制（GameHUD）：虚拟摇杆(移动) + 触摸视角；PC 端摇杆 keyBinding=WASD + 鼠标视角
+    -- 平台默认屏上摇杆在 InputManager.Initialize 时已启（main.lua 已关，避免与 GameHUD 双摇杆）
+    GameHUD.Initialize()
+    GameHUD.SetControls(character_.controls)
+    GameHUD.Create({ enableJump = true, enableRun = true })
+    GameHUD.EnableTouchLook({ camera = tpCamera_:GetNode() })
+
     -- 全局碰撞事件：桃花收集（一次性触发）
     SubscribeToEvent("PhysicsCollisionStart", "PlayerController_HandleCollisionStart")
 
@@ -129,28 +137,40 @@ end
 function PlayerController.Update(timeStep)
     if character_ == nil then return end
 
-    -- 鼠标视角
+    -- 相机视角：触摸端由 GameHUD.EnableTouchLook 写 controls.yaw/pitch；PC 端鼠标增量叠加（移动端鼠标增量恒 0，不干扰）
     local mouseX, mouseY = InputManager.GetMouseDelta()
-    yaw_ = yaw_ + mouseX * MOUSE_SENSITIVITY
-    pitch_ = pitch_ + mouseY * MOUSE_SENSITIVITY
-    pitch_ = Clamp(pitch_, -PITCH_LIMIT, PITCH_LIMIT)
-    character_.controls.yaw = yaw_
-    character_.controls.pitch = pitch_
+    if mouseX ~= 0 or mouseY ~= 0 then
+        character_.controls.yaw = character_.controls.yaw + mouseX * MOUSE_SENSITIVITY
+        character_.controls.pitch = Clamp(character_.controls.pitch + mouseY * MOUSE_SENSITIVITY,
+            -PITCH_LIMIT, PITCH_LIMIT)
+    end
+    yaw_ = character_.controls.yaw
+    pitch_ = character_.controls.pitch
 
-    -- 移动（WASD / 方向键），使用枚举
+    -- 移动：GameHUD 摇杆写入 controls（真机），键盘 WASD 作 PC 兜底（OR 叠加，不覆盖摇杆值）
     local controls = character_.controls
-    controls:Set(CTRL_FORWARD, InputManager.IsKeyDown(KEY_W) or InputManager.IsKeyDown(KEY_UP))
-    controls:Set(CTRL_BACK,    InputManager.IsKeyDown(KEY_S) or InputManager.IsKeyDown(KEY_DOWN))
-    controls:Set(CTRL_LEFT,    InputManager.IsKeyDown(KEY_A) or InputManager.IsKeyDown(KEY_LEFT))
-    controls:Set(CTRL_RIGHT,   InputManager.IsKeyDown(KEY_D) or InputManager.IsKeyDown(KEY_RIGHT))
+    controls:Set(CTRL_FORWARD, controls:IsDown(CTRL_FORWARD) or InputManager.IsKeyDown(KEY_W) or InputManager.IsKeyDown(KEY_UP))
+    controls:Set(CTRL_BACK,    controls:IsDown(CTRL_BACK) or InputManager.IsKeyDown(KEY_S) or InputManager.IsKeyDown(KEY_DOWN))
+    controls:Set(CTRL_LEFT,    controls:IsDown(CTRL_LEFT) or InputManager.IsKeyDown(KEY_A) or InputManager.IsKeyDown(KEY_LEFT))
+    controls:Set(CTRL_RIGHT,   controls:IsDown(CTRL_RIGHT) or InputManager.IsKeyDown(KEY_D) or InputManager.IsKeyDown(KEY_RIGHT))
+    controls:Set(CTRL_RUN,     controls:IsDown(CTRL_RUN) or InputManager.IsKeyDown(KEY_LSHIFT) or InputManager.IsKeyDown(KEY_RSHIFT))
 
-    -- 跑步（Shift）
-    controls:Set(CTRL_RUN, InputManager.IsKeyDown(KEY_LSHIFT) or InputManager.IsKeyDown(KEY_RSHIFT))
-
-    -- 跳跃（空格，边沿触发；仅着地时）
+    -- 跳跃（空格兜底；GameHUD 跳跃按钮也设 CTRL_JUMP）
     if character_.onGround and InputManager.IsKeyPress(KEY_SPACE) then
         controls:Set(CTRL_JUMP, true)
     end
+end
+
+--- 对话/菜单打开时锁定移动（防 GameHUD 摇杆在对话中串台移动角色）
+function PlayerController.ClearMovement()
+    if character_ == nil then return end
+    local c = character_.controls
+    c:Set(CTRL_FORWARD, false)
+    c:Set(CTRL_BACK, false)
+    c:Set(CTRL_LEFT, false)
+    c:Set(CTRL_RIGHT, false)
+    c:Set(CTRL_JUMP, false)
+    c:Set(CTRL_RUN, false)
 end
 
 --- PostUpdate：更新第三人称相机

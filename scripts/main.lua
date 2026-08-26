@@ -267,6 +267,8 @@ function Start()
 
     -- 2. 输入抽象层
     InputManager.Initialize({ touchSensitivity = 2 })
+    -- GameHUD 提供自己的触屏摇杆+触摸视角，关平台默认屏上摇杆避免双摇杆
+    InputManager.DisableScreenJoystick()
 
     -- 3. UI 系统（对话/选项/字幕统一用 urhox-libs/UI）
     UI.Init({
@@ -325,6 +327,7 @@ function HandleUpdate(eventType, eventData)
 
     -- 对话打开时：只处理对话输入，玩家停移动（防串台）
     if DialogueUI.IsOpen() then
+        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话中串台）
         DialogueUI.HandleInput()
     else
         PlayerController.Update(timeStep)

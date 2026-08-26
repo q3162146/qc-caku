@@ -54,4 +54,9 @@ function InputManager.IsMouseButtonDown(button)
     return input:GetMouseButtonDown(button)
 end
 
+--- 关闭平台默认屏上摇杆（改用 GameHUD 摇杆/触摸视角时调用，避免双摇杆）
+function InputManager.DisableScreenJoystick()
+    PlatformInputManager.DisableTouchInput()
+end
+
 return InputManager
