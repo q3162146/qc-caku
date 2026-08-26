@@ -162,7 +162,7 @@ end
 
 ---@return boolean
 function SaveMenu.IsOpen()
-    return panel_ ~= nil and panel_:GetVisible() == true
+    return panel_ ~= nil and panel_:IsVisible()
 end
 
 return SaveMenu
