@@ -24,6 +24,7 @@ local PlayerController = require "game.PlayerController"
 local InputManager = require "game.InputManager"
 local FlowController = require "flow.FlowController"
 local DialogueUI = require "ui.DialogueUI"
+local SaveMenu = require "ui.SaveMenu"
 local MediaPlayer = require "media.MediaPlayer"
 local VideoSpike = require "experiments.VideoSpike"
 local UI = require "urhox-libs/UI"
@@ -313,6 +314,9 @@ function Start()
         end
     end)
 
+    -- 存档/读档菜单（正式界面，把 F8/F9 做成菜单；S9 前保留）
+    SaveMenu.Create(UI.GetRoot())
+
     FlowController.Init(data)
     if not FlowController.Resume() then
         FlowController.Start()
@@ -349,10 +353,12 @@ function HandleUpdate(eventType, eventData)
         VideoSpike.Update(timeStep)
     end
 
-    -- 对话打开时：只处理对话输入，玩家停移动（防串台）
-    if DialogueUI.IsOpen() then
-        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话中串台）
-        DialogueUI.HandleInput()
+    -- 对话/菜单打开时：只处理对应输入，玩家停移动（防串台）
+    if DialogueUI.IsOpen() or SaveMenu.IsOpen() then
+        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话/菜单中串台）
+        if DialogueUI.IsOpen() then
+            DialogueUI.HandleInput()
+        end
     else
         PlayerController.Update(timeStep)
     end
