@@ -318,6 +318,7 @@ local Chapters = {
                 type = "dialogue",
                 npc = "守桃老人",
                 lines = "offering_before",
+                scene = "chaoyang_gukou",   -- 献花前返回朝阳谷，面对无涕桃
                 next = "P42",
             },
             -- P42 终局抉择（两行动：献花/离开。作为最终确认，结局按最高信念轴分叉）
@@ -328,6 +329,7 @@ local Chapters = {
                 lines = "final_choice",
                 choiceOrder = { "offer", "leave" },
                 recordFlag = "final_action",
+                scene = "chaoyang_gukou",   -- 终局抉择在朝阳谷
                 -- 三结局分支：重逢→S7圆满 / 放手→S8放手 / 传说→S9传说（按最高信念轴）
                 resolveNext = function(data)
                     local b = data.belief
