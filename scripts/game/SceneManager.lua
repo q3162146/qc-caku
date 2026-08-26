@@ -171,7 +171,7 @@ function BuildChaoyangGukou(root)
         { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true,
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
     -- 守桃老人辨识光柱（白模下让人一眼看出"走近这位老人交互"）
-    WhiteBox.Beacon(scene_, Vector3(oldManPos.x, 0.6, oldManPos.z), { 0.95, 0.82, 0.45 }, 2.4)
+    WhiteBox.Beacon(scene_, "Beacon_oldman", Vector3(oldManPos.x, 0.6, oldManPos.z), { 0.95, 0.82, 0.45 }, 2.4)
 
     -- 边界墙
     -- 边界墙（R12 根因修复：后墙外移 25.5→32，给第三人称相机留 space；distance 6.8 不被墙碰撞压回）

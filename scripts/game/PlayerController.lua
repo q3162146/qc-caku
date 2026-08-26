@@ -33,6 +33,7 @@ local blossomHandler_ = nil
 
 local MOUSE_SENSITIVITY = 0.15   -- 鼠标灵敏度（度/像素）
 local PITCH_LIMIT = 80.0
+local PICKUP_RADIUS = 1.1        -- 走近拾取/交互半径（米）
 
 --- 创建玩家与相机
 ---@param scene Scene
@@ -103,8 +104,8 @@ function PlayerController.Create(scene)
     GameHUD.Create({ enableJump = true, enableRun = true })
     GameHUD.EnableTouchLook({ camera = tpCamera_:GetNode() })
 
-    -- 全局碰撞事件：桃花收集（一次性触发）
-    SubscribeToEvent("PhysicsCollisionStart", "PlayerController_HandleCollisionStart")
+    -- 拾取/交互改用 Update 内距离轮询（真机 KCC 驱动不触发 PhysicsCollisionStart，见 Update）
+    -- 不再订阅全局碰撞事件，避免与轮询重复触发。
 
     print("[PlayerController] 玩家已创建")
     return true
@@ -158,6 +159,30 @@ function PlayerController.Update(timeStep)
     -- 跳跃（空格兜底；GameHUD 跳跃按钮也设 CTRL_JUMP）
     if character_.onGround and InputManager.IsKeyPress(KEY_SPACE) then
         controls:Set(CTRL_JUMP, true)
+    end
+
+    -- 走近拾取/交互：真机 KCC 驱动不触发全局碰撞事件，故改用距离轮询识别 Blossom_/Int_ 标记。
+    if blossomHandler_ ~= nil and scene_ ~= nil and playerNode_ ~= nil then
+        local px, pz = playerNode_.worldPosition.x, playerNode_.worldPosition.z
+        local children = scene_:GetChildren(true)
+        for _, child in ipairs(children) do
+            local key = string.match(child.name, "^Blossom_(%w+)$")
+            if key == nil then
+                key = string.match(child.name, "^Int_(%w+)$")
+            end
+            if key ~= nil then
+                local wx, wz = child.worldPosition.x, child.worldPosition.z
+                local dx, dz = wx - px, wz - pz
+                if dx * dx + dz * dz <= PICKUP_RADIUS * PICKUP_RADIUS then
+                    print("[PlayerController] 拾取标记: " .. key)
+                    local beacon = scene_:GetChild("Beacon_" .. key, true)
+                    if beacon ~= nil then beacon:Remove() end
+                    child:Remove()
+                    blossomHandler_(key, child)
+                    break   -- 一次只收一个（防对话中连续触发）
+                end
+            end
+        end
     end
 end
 
