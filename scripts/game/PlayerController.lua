@@ -175,11 +175,8 @@ function PlayerController.Update(timeStep)
                 local dx, dz = wx - px, wz - pz
                 if dx * dx + dz * dz <= PICKUP_RADIUS * PICKUP_RADIUS then
                     print("[PlayerController] 拾取标记: " .. key)
-                    local beacon = scene_:GetChild("Beacon_" .. key, true)
-                    if beacon ~= nil then beacon:Remove() end
-                    child:Remove()
                     blossomHandler_(key, child)
-                    break   -- 一次只收一个（防对话中连续触发）
+                    break   -- 一次只上报一个（防对话中连续触发）
                 end
             end
         end

@@ -208,9 +208,10 @@ end
 
 --- 玩法模块上报"拾取一个标记点"（规则：累计 → 达标返回统一完成结果）
 ---@param key string 标记键（五行键或交互点键）
-function FlowController.OnBlossomCollected(key)
+---@param node? Node 被拾取标记节点（采集成功后随标记与光柱一并移除；对话中不消费，节点保留待下次轮询）
+function FlowController.OnBlossomCollected(key, node)
     if state_ == nil or state_.paragraph == nil then return end
-    if DialogueUI.IsOpen() then return end   -- 对话中不收（避免与对话推进串台）
+    if DialogueUI.IsOpen() then return end   -- 对话中不收（节点保留，待对话关闭后再轮询拾取）
     local p = state_.paragraph
     if p.type ~= "explore" then return end
 
@@ -223,6 +224,13 @@ function FlowController.OnBlossomCollected(key)
             print("[Flow] 交互段 " .. p.id .. " 忽略无关拾取: " .. tostring(key))
         end
         return
+    end
+
+    -- 采集：先移除标记节点与其辨识光柱（避免对话中拾取丢失 / 残留空柱）
+    if node ~= nil then
+        local beacon = node.parent and node.parent:GetChild("Beacon_" .. key, true)
+        if beacon ~= nil then beacon:Remove() end
+        node:Remove()
     end
 
     -- 数据变化：写入共享 PlayerData（五行桃花 + 札记占位）
