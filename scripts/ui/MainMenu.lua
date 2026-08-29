@@ -58,6 +58,7 @@ function MainMenu.Show()
         continueBtn_:SetDisabled(not hasSave)
     end
     root_:SetVisible(true)
+    print("[MainMenu] 显示主菜单" .. (hasSave and "（有存档，可继续）" or "（无存档）"))
 end
 
 function MainMenu.Close()

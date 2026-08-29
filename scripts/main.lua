@@ -160,6 +160,7 @@ local function CreateVideoSpikeTrigger()
         fontSize = 14,
         onClick = function()
             print("[main] 触屏：直切 S6 记忆印证链（ch3/P31）")
+            MainMenu.Close()
             MediaPlayer.Stop(true)
             FlowController.DebugJumpToParagraph("P31")
         end,
@@ -399,6 +400,7 @@ function HandleUpdate(eventType, eventData)
     end
     if InputManager.IsKeyPress(KEY_F10) then
         print("[main] 调试：直切 S6 记忆印证链（ch3/P31）")
+        MainMenu.Close()
         MediaPlayer.Stop(true)
         FlowController.DebugJumpToParagraph("P31")
     end
