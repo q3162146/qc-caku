@@ -30,13 +30,22 @@ local FlowController = {}
 local data_ = nil          -- 共享 PlayerData（经 Sanitize 清洗）
 ---@type table|nil
 local state_ = nil         -- { chapterIndex, paragraphIndex, paragraph, collectCount, collected }
+---@type table|nil
+local pendingDialogueAfterVideo_ = nil   -- 讲述段(对话+回忆视频)：视频播完后再进该段对白
 
 --- 初始化流程控制器（注入清洗后的 PlayerData）
 ---@param data table
 function FlowController.Init(data)
     data_ = data
     MediaPlayer.SetCompleteHandler(function(result)
-        CompleteParagraph(result)
+        -- 讲述段(对话+回忆视频)：视频播完 → 播该段对白；否则按正常收尾推进
+        if pendingDialogueAfterVideo_ ~= nil then
+            local dlgP = pendingDialogueAfterVideo_
+            pendingDialogueAfterVideo_ = nil
+            StartDialogueParagraph(dlgP)
+        else
+            CompleteParagraph(result)
+        end
     end)
 end
 
@@ -118,6 +127,12 @@ function EnterParagraph()
     if p.type == "video" then
         print("[Flow] 视频段落 " .. (p.video or "?") .. " → MediaPlayer")
         MediaPlayer.Play(p, data_)
+    elseif p.type == "dialogue" and p.video then
+        -- 讲述段(对话+回忆视频，P04~P06)：先播回忆视频，播完再讲该段对白
+        pendingDialogueAfterVideo_ = p
+        print("[Flow] 讲述段 " .. p.id .. " 先播回忆视频 " .. tostring(p.video))
+        MediaPlayer.Play({ id = p.id, type = "video", video = p.video,
+            breakpoints = { { at = -1, act = "auto" } } }, data_)
     elseif p.type == "dialogue" or p.type == "choice" then
         StartDialogueParagraph(p)
     elseif p.type == "explore" then
