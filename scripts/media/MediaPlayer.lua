@@ -32,20 +32,19 @@ local VIDEO_SOURCES = {
     S4 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S5 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S6 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S7 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S8 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S9 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    S7 = "video/剧情/S7_圆满.mp4",
+    S8 = "video/剧情/S8_放手.mp4",
+    S9 = "video/剧情/S9_传说.mp4",
     S10 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S11 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S12 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S13 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    -- S6 记忆印证 5 段（ch3/P32~P36）：正式 S6-x 素材未到位，先占位同测试视频；
-    --   正式素材到位后逐项替换（仍走"播完或断点暂停 → 解读三选 → 信念+1"）。
-    ["S6-1"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    ["S6-2"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    ["S6-3"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    ["S6-4"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    ["S6-5"] = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    -- S6 记忆印证 5 段（ch3/P32~P36）：Phase 1 正式素材（15s / 9:16 / 720p）
+    ["S6-1"] = "video/剧情/S6-1_礼.mp4",
+    ["S6-2"] = "video/剧情/S6-2_乐.mp4",
+    ["S6-3"] = "video/剧情/S6-3_射.mp4",
+    ["S6-4"] = "video/剧情/S6-4_御.mp4",
+    ["S6-5"] = "video/剧情/S6-5_书数.mp4",
 }
 
 local SEEK_TOLERANCE = 0.15

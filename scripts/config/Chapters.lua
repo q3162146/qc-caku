@@ -200,14 +200,14 @@ local Chapters = {
                 next = "P32",
             },
             -- P32~P36 记忆印证×5：每段视频 S6-x + 播完/断点暂停 → 解读三选（信念+1）
-            -- 断点 at 为占位（正式 S6-x 到位后按《21》§5 真机校正）
+            -- 断点 at=8.5：15s 正式片关键画面约 8~10s，取出现前 ~0.4s；真机逐段再校
             {
                 id = "P32",
                 type = "video",
                 video = "S6-1",
                 breakpoints = {
                     {
-                        at = 4.0,
+                        at = 8.5,
                         act = "choice",
                         prompt = "礼·素女为什么没有拦他？",
                         options = {
@@ -228,7 +228,7 @@ local Chapters = {
                 video = "S6-2",
                 breakpoints = {
                     {
-                        at = 4.0,
+                        at = 8.5,
                         act = "choice",
                         prompt = "乐·那曲琴声听成了什么？",
                         options = {
@@ -248,7 +248,7 @@ local Chapters = {
                 video = "S6-3",
                 breakpoints = {
                     {
-                        at = 4.0,
+                        at = 8.5,
                         act = "choice",
                         prompt = "射·那支箭穿过桃花枝，准还是不准？",
                         options = {
@@ -268,7 +268,7 @@ local Chapters = {
                 video = "S6-4",
                 breakpoints = {
                     {
-                        at = 4.0,
+                        at = 8.5,
                         act = "choice",
                         prompt = "御·回望谷口时看见什么？",
                         options = {
@@ -288,7 +288,7 @@ local Chapters = {
                 video = "S6-5",
                 breakpoints = {
                     {
-                        at = 4.0,
+                        at = 8.5,
                         act = "choice",
                         prompt = "书/数·那味药是「当归」还是「不归」？",
                         options = {
@@ -344,6 +344,7 @@ local Chapters = {
                 id = "P43",
                 type = "video",
                 video = "S7",
+                breakpoints = { { at = -1, act = "auto" } },
                 scene = "chaoyang_gukou",
                 ending = "round",
                 next = "P99",
@@ -352,6 +353,7 @@ local Chapters = {
                 id = "P44",
                 type = "video",
                 video = "S8",
+                breakpoints = { { at = -1, act = "auto" } },
                 scene = "chaoyang_gukou",
                 ending = "release",
                 next = "P99",
@@ -360,6 +362,7 @@ local Chapters = {
                 id = "P45",
                 type = "video",
                 video = "S9",
+                breakpoints = { { at = -1, act = "auto" } },
                 scene = "chaoyang_gukou",
                 ending = "legend",
                 next = "P99",

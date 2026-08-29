@@ -5,6 +5,7 @@
 
 | 版本 | 日期 | 变更摘要 |
 |------|------|---------|
+| v0.3.0-media1 | 2026-08-30 | Phase 1 正式视频：S6-1..5 记忆印证 + S7/S8/S9 三结局（15s/9:16/720p）替换 VIDEO_SOURCES 占位；P32-36 断点 at=8.5；P43-45 at=-1。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |
 | v0.2.3-scene | 2026-08-30 | ch2/ch4 白模场景填充：洛水阴山加雾霭冷光、盒屋/山泉/无面鬼光柱/矿场矮灯；朝阳谷口无涕桃石板圈+粉白光柱、老人暖灯。不改出生点/边界墙/采集交互点。LSP 0 Error、官方构建成功、140 帧 lua_errors=0；三场景截图已出 |
 | v0.2.2-qa | 2026-08-30 | 整条主链真机验收出码（基于 8910045）：静态链 P01→…→P99 结局卡→主菜单已齐；SaveMenu 保存/读档、启动不再自动续档。LSP 0 Error、官方构建成功、140 帧 lua_errors=0；二维码已生成待真机整链+存档读档回归 |
 | v0.2.2-ending | 2026-08-30 | 正式结局画面 + 制作名单：新增 `scripts/ui/EndingScreen.lua`（round/release/legend 三套文案 + 制作名单 + 返回主菜单；一次建卡 SetText/SetVisible）。P43/P44/P45 加 `ending`；FlowController 记 `pendingEnding_` 并在 end 段回调带出；main 接 Show/SetOnReturn，结局卡打开锁移动。LSP 0 Error、官方构建成功、140 帧 lua_errors=0；二维码已生成待真机验证 |
