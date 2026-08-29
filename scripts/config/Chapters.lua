@@ -121,11 +121,11 @@ local Chapters = {
                 lines = "depart_guide",
                 next = "P21",   -- 前往洛水阴山 → 进入 ch2
             },
-            -- P99 骨架期临时收尾：白模演示循环回 P01；现为结局播完后的演示闭环（正式结局/菜单建成后移除）
+            -- P99 结局收尾：播完 S7/S8/S9 后进 end 段 → 弹出结局卡/制作名单（不再循环 P01）
             {
                 id = "P99",
                 type = "end",
-                desc = "骨架期演示闭环（结局播完后循环回 P01；正式结局/菜单建成后移除）",
+                desc = "结局画面 + 制作名单（返回主菜单）",
                 next = "P01",
             },
         },
@@ -345,6 +345,7 @@ local Chapters = {
                 type = "video",
                 video = "S7",
                 scene = "chaoyang_gukou",
+                ending = "round",
                 next = "P99",
             },
             {
@@ -352,6 +353,7 @@ local Chapters = {
                 type = "video",
                 video = "S8",
                 scene = "chaoyang_gukou",
+                ending = "release",
                 next = "P99",
             },
             {
@@ -359,6 +361,7 @@ local Chapters = {
                 type = "video",
                 video = "S9",
                 scene = "chaoyang_gukou",
+                ending = "legend",
                 next = "P99",
             },
         },

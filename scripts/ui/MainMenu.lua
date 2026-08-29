@@ -8,6 +8,7 @@ local UI = require "urhox-libs/UI"
 local PlayerData = require "config.PlayerData"
 local FlowController = require "flow.FlowController"
 local MediaPlayer = require "media.MediaPlayer"
+local EndingScreen = require "ui.EndingScreen"
 
 local MainMenu = {}
 
@@ -21,6 +22,7 @@ local onStartGame_ = nil   -- 开始新游戏后的回调（main 注入，用于
 --- 开始新游戏（清档重置）
 local function doStart()
     MediaPlayer.Stop(true)             -- 停掉结局/讲述残留媒体，避免与新开局串台
+    EndingScreen.Close()
     local fresh = PlayerData.Clear()   -- 删除存档 + 全新默认数据
     FlowController.Init(fresh)
     FlowController.Start()
@@ -38,6 +40,7 @@ local function doContinue()
         return
     end
     MediaPlayer.Stop(true)
+    EndingScreen.Close()
     FlowController.Init(loaded)
     if not FlowController.Resume() then
         FlowController.Start()

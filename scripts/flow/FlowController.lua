@@ -32,13 +32,17 @@ local data_ = nil          -- 共享 PlayerData（经 Sanitize 清洗）
 local state_ = nil         -- { chapterIndex, paragraphIndex, paragraph, collectCount, collected }
 ---@type table|nil
 local pendingDialogueAfterVideo_ = nil   -- 讲述段(对话+回忆视频)：视频播完后再进该段对白
+---@type string|nil
+local pendingEnding_ = nil   -- 最近进入的结局类型（round/release/legend），end 段回调带出
 ---@type function|nil
-local onGameEnd_ = nil   -- 结局段进入时回调（main 注入 → 显示主菜单）
+local onGameEnd_ = nil   -- 结局段进入时回调（main 注入 → 显示结局卡）
 
 --- 初始化流程控制器（注入清洗后的 PlayerData）
 ---@param data table
 function FlowController.Init(data)
     data_ = data
+    pendingEnding_ = nil
+    pendingDialogueAfterVideo_ = nil
     MediaPlayer.SetCompleteHandler(function(result)
         -- 讲述段(对话+回忆视频)：视频播完 → 播该段对白；否则按正常收尾推进
         if pendingDialogueAfterVideo_ ~= nil then
@@ -112,6 +116,12 @@ function EnterParagraph()
 
     print("[Flow] 进入段落 " .. p.id .. "（" .. p.type .. "）" .. (p.desc or ""))
 
+    -- 记录最近结局类型（P43/P44/P45 带 ending 字段），供 end 段回调带给 EndingScreen
+    if p.ending ~= nil then
+        pendingEnding_ = p.ending
+        print("[Flow] 记录结局类型 " .. tostring(pendingEnding_))
+    end
+
     -- 段落指定场景 → 切换白模场景；切换前显式释放剧情播放器
     if p.scene then
         MediaPlayer.Stop(true)
@@ -142,10 +152,10 @@ function EnterParagraph()
         print("[Flow] 探索段（" .. tostring(p.goal or "") .. "）：收集 "
             .. state_.collectCount .. " 个标记点后继续")
     elseif p.type == "end" then
-        -- 正式结局：回到主菜单（不再演示循环 P99→P01）
-        print("[Flow] 结局段落（返回主菜单）")
+        -- 正式结局：弹出结局卡 + 制作名单（不再演示循环 P99→P01）
+        print("[Flow] 结局段落（弹出结局卡） | ending=" .. tostring(pendingEnding_))
         if onGameEnd_ ~= nil then
-            onGameEnd_()
+            onGameEnd_(pendingEnding_)
         end
     end
 end
@@ -401,7 +411,7 @@ function FindParagraphIndex(id)
     return nil, nil
 end
 
---- 结局段进入时的回调（main 注入：显示主菜单 / 结束画面）
+--- 结局段进入时的回调（main 注入：显示结局卡；参数为 ending 键）
 ---@param cb function|nil
 function FlowController.SetOnGameEnd(cb)
     onGameEnd_ = cb

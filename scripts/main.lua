@@ -26,6 +26,7 @@ local FlowController = require "flow.FlowController"
 local DialogueUI = require "ui.DialogueUI"
 local SaveMenu = require "ui.SaveMenu"
 local MainMenu = require "ui.MainMenu"
+local EndingScreen = require "ui.EndingScreen"
 local MediaPlayer = require "media.MediaPlayer"
 local VideoSpike = require "experiments.VideoSpike"
 local UI = require "urhox-libs/UI"
@@ -318,11 +319,15 @@ function Start()
 
     -- 存档/读档菜单（正式界面，把 F8/F9 做成菜单；S9 前保留）
     SaveMenu.Create(UI.GetRoot())
+    EndingScreen.Create(UI.GetRoot())
+    EndingScreen.SetOnReturn(function()
+        MainMenu.Show()
+    end)
 
     FlowController.Init(data)
-    -- 结局段 → 返回主菜单
-    FlowController.SetOnGameEnd(function()
-        MainMenu.Show()
+    -- 结局段 → 弹出对应结局卡 + 制作名单（点返回再进主菜单）
+    FlowController.SetOnGameEnd(function(endingKey)
+        EndingScreen.Show(endingKey)
     end)
     -- 主菜单：由玩家选择"开始游戏 / 继续游戏"（不再启动即自动续档）
     MainMenu.Create(UI.GetRoot())
@@ -360,8 +365,8 @@ function HandleUpdate(eventType, eventData)
     end
 
     -- 对话/菜单打开时：只处理对应输入，玩家停移动（防串台）
-    if DialogueUI.IsOpen() or SaveMenu.IsOpen() or MainMenu.IsOpen() then
-        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话/菜单中串台）
+    if DialogueUI.IsOpen() or SaveMenu.IsOpen() or MainMenu.IsOpen() or EndingScreen.IsOpen() then
+        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话/菜单/结局卡中串台）
         if DialogueUI.IsOpen() then
             DialogueUI.HandleInput()
         end
