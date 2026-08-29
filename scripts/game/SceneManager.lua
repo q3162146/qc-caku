@@ -25,7 +25,7 @@ local currentScene_ = ""
 ---@type function|nil
 local onSceneLoaded_ = nil
 
---- 场景氛围配置（雾色/环境光，随场景切换）
+--- 场景氛围配置（雾色/环境光/主光，随场景切换）
 local SCENE_MOOD = {
     chaoyang_gukou = {
         name = "朝阳谷口",
@@ -33,6 +33,9 @@ local SCENE_MOOD = {
         fog = Color(0.92, 0.85, 0.78),
         fogStart = 30.0,
         fogEnd = 120.0,
+        fogDensity = 1.0,
+        lightColor = Color(0.95, 0.90, 0.82),
+        lightBrightness = 1.05,
     },
     gu_nei_taolin = {
         name = "谷内桃林",
@@ -40,13 +43,21 @@ local SCENE_MOOD = {
         fog = Color(0.80, 0.82, 0.74),
         fogStart = 25.0,
         fogEnd = 90.0,
+        fogDensity = 1.0,
+        lightColor = Color(0.82, 0.88, 0.78),
+        lightBrightness = 0.92,
     },
     luoshui_yinshan = {
         name = "洛水阴山",
-        ambient = Color(0.30, 0.30, 0.36),
-        fog = Color(0.42, 0.44, 0.50),
-        fogStart = 12.0,
-        fogEnd = 60.0,
+        ambient = Color(0.22, 0.24, 0.32),
+        fog = Color(0.36, 0.40, 0.50),
+        -- 第三人称相机约 6.8m，fogStart 须大于相机距离，否则整屏被雾吃掉
+        fogStart = 18.0,
+        fogEnd = 70.0,
+        fogDensity = 1.2,
+        heightFog = false,
+        lightColor = Color(0.62, 0.68, 0.84),
+        lightBrightness = 0.62,
     },
 }
 
@@ -119,7 +130,8 @@ function SceneManager.GetCurrentScene()
     return currentScene_
 end
 
---- 应用场景氛围（雾 + 环境光）
+--- 应用场景氛围（雾 + 环境光 + 主光）
+---@param mood table
 function ApplyMood(mood)
     local zoneNode = scene_:GetChild("Zone", true)
     if zoneNode == nil then
@@ -131,6 +143,28 @@ function ApplyMood(mood)
     zone.fogColor = mood.fog
     zone.fogStart = mood.fogStart
     zone.fogEnd = mood.fogEnd
+    zone.fogDensity = mood.fogDensity or 1.0
+    if mood.heightFog then
+        zone.heightFog = true
+        zone.fogHeight = mood.fogHeight or 3.0
+        zone.fogHeightScale = mood.fogHeightScale or 0.3
+    else
+        zone.heightFog = false
+    end
+
+    local lightNode = scene_:GetChild("DirectionalLight", true)
+    if lightNode ~= nil then
+        ---@type Light|nil
+        local light = lightNode:GetComponent("Light")
+        if light ~= nil then
+            if mood.lightColor ~= nil then
+                light.color = mood.lightColor
+            end
+            if mood.lightBrightness ~= nil then
+                light.brightness = mood.lightBrightness
+            end
+        end
+    end
 end
 
 --- ============================================================================
@@ -143,6 +177,31 @@ function BuildChaoyangGukou(root)
 
     -- 无涕桃（中央，略大）
     WhiteBox.PeachTree(scene_, "WutiTao", Vector3(0, 0, 0), 1.6)
+    -- 终局点缀：无涕桃周围一圈矮石板 + 粉/白光柱（不改树本身，ch0/ch1 采集不受影响）
+    local ring = {
+        { Vector3(2.4, 0.12, 0.0),  { 0.96, 0.82, 0.86 } },
+        { Vector3(-2.4, 0.12, 0.0), { 0.96, 0.88, 0.90 } },
+        { Vector3(0.0, 0.12, 2.4),  { 0.94, 0.78, 0.84 } },
+        { Vector3(0.0, 0.12, -2.4), { 0.96, 0.88, 0.90 } },
+        { Vector3(1.7, 0.12, 1.7),  { 0.95, 0.80, 0.86 } },
+        { Vector3(-1.7, 0.12, 1.7), { 0.96, 0.86, 0.90 } },
+        { Vector3(1.7, 0.12, -1.7), { 0.94, 0.78, 0.84 } },
+        { Vector3(-1.7, 0.12, -1.7),{ 0.96, 0.88, 0.90 } },
+    }
+    for i, item in ipairs(ring) do
+        local pos, rgb = item[1], item[2]
+        WhiteBox.Box(scene_, "WutiTaoRing" .. i, pos, Vector3(0.55, 0.24, 0.55), { 0.72, 0.62, 0.52 })
+        WhiteBox.Beacon(scene_, "Beacon_WutiTao_" .. i, Vector3(pos.x, 0.4, pos.z), rgb, 1.1)
+    end
+    -- 无涕桃柔和点光（局部点缀，不改主光基调）
+    local taoLightNode = scene_:CreateChild("WutiTaoGlow")
+    taoLightNode.position = Vector3(0, 2.2, 0)
+    local taoLight = taoLightNode:CreateComponent("Light")
+    taoLight.lightType = LIGHT_POINT
+    taoLight.color = Color(1.0, 0.78, 0.86)
+    taoLight.brightness = 0.55
+    taoLight.range = 6.0
+    taoLight.castShadows = false
 
     -- 素女守望处（小台 + 素色标记）
     WhiteBox.Box(scene_, "WatchPlatform", Vector3(5, 0.25, 10), Vector3(3, 0.5, 3), { 0.78, 0.80, 0.82 })
@@ -172,6 +231,21 @@ function BuildChaoyangGukou(root)
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
     -- 守桃老人辨识光柱（白模下让人一眼看出"走近这位老人交互"）
     WhiteBox.Beacon(scene_, "Beacon_oldman", Vector3(oldManPos.x, 0.6, oldManPos.z), { 0.95, 0.82, 0.45 }, 2.4)
+    -- 献花前氛围：老人旁暖色矮灯（不改 Int_oldman / Beacon_oldman）
+    WhiteBox.Cylinder(scene_, "OldManLampPost",
+        Vector3(oldManPos.x + 1.4, 0.7, oldManPos.z - 0.6), 0.16, 1.4, { 0.42, 0.32, 0.24 })
+    WhiteBox.Sphere(scene_, "OldManLamp",
+        Vector3(oldManPos.x + 1.4, 1.55, oldManPos.z - 0.6), 0.28, { 1.0, 0.82, 0.48 }, { unlit = true })
+    WhiteBox.Beacon(scene_, "Beacon_oldman_lamp",
+        Vector3(oldManPos.x + 1.4, 0.4, oldManPos.z - 0.6), { 1.0, 0.78, 0.42 }, 1.2)
+    local lampLightNode = scene_:CreateChild("OldManWarmLight")
+    lampLightNode.position = Vector3(oldManPos.x + 1.4, 1.6, oldManPos.z - 0.6)
+    local lampLight = lampLightNode:CreateComponent("Light")
+    lampLight.lightType = LIGHT_POINT
+    lampLight.color = Color(1.0, 0.72, 0.38)
+    lampLight.brightness = 0.7
+    lampLight.range = 4.5
+    lampLight.castShadows = false
 
     -- 边界墙
     -- 边界墙（R12 根因修复：后墙外移 25.5→32，给第三人称相机留 space；distance 6.8 不被墙碰撞压回）
@@ -232,18 +306,53 @@ function BuildLuoShuiYinShan(root)
     WhiteBox.Box(scene_, "TownHouse1", Vector3(-4, 1.0, -12), Vector3(4, 2.0, 4), { 0.40, 0.36, 0.40 })
     WhiteBox.Box(scene_, "TownHouse2", Vector3(2, 1.4, -4), Vector3(4, 2.8, 4), { 0.44, 0.38, 0.42 })
     WhiteBox.Box(scene_, "TownHouse3", Vector3(-3, 0.8, 8), Vector3(4.5, 1.6, 4), { 0.38, 0.34, 0.38 })
+    -- 异域山镇：再加 3 座高低错落的暗灰/冷色盒屋与屋棚
+    WhiteBox.Box(scene_, "TownHouse4", Vector3(5.2, 1.6, -14), Vector3(3.2, 3.2, 3.4), { 0.34, 0.36, 0.44 })
+    WhiteBox.Box(scene_, "TownHouse4Roof", Vector3(5.2, 3.4, -14), Vector3(3.8, 0.28, 4.0), { 0.26, 0.28, 0.36 })
+    WhiteBox.Box(scene_, "TownHouse5", Vector3(-5.6, 1.2, -2), Vector3(3.0, 2.4, 3.2), { 0.32, 0.34, 0.40 })
+    WhiteBox.Box(scene_, "TownShed", Vector3(5.4, 0.7, 4), Vector3(3.6, 1.4, 2.6), { 0.30, 0.32, 0.38 })
+    WhiteBox.Box(scene_, "TownShedRoof", Vector3(5.4, 1.5, 4), Vector3(4.2, 0.18, 3.2), { 0.24, 0.26, 0.34 })
+
+    -- 山泉/井：石台 + 小盒井架（呼应「无面鬼喝山泉」）
+    WhiteBox.Cylinder(scene_, "SpringWell", Vector3(-5.2, 0.35, 14), 1.8, 0.7, { 0.36, 0.40, 0.48 })
+    WhiteBox.Cylinder(scene_, "SpringWater", Vector3(-5.2, 0.62, 14), 1.2, 0.16, { 0.28, 0.42, 0.58 }, { unlit = true })
+    WhiteBox.Box(scene_, "SpringFrame", Vector3(-5.2, 1.15, 14), Vector3(2.0, 0.22, 2.0), { 0.30, 0.32, 0.38 })
+    WhiteBox.Box(scene_, "SpringPostL", Vector3(-6.05, 1.5, 14), Vector3(0.16, 0.9, 0.16), { 0.26, 0.28, 0.34 })
+    WhiteBox.Box(scene_, "SpringPostR", Vector3(-4.35, 1.5, 14), Vector3(0.16, 0.9, 0.16), { 0.26, 0.28, 0.34 })
+    WhiteBox.Beacon(scene_, "Beacon_spring", Vector3(-5.2, 0.5, 14), { 0.40, 0.62, 0.82 }, 1.4)
 
     -- 无面鬼处（石台 + 暗色标记）
     -- R12 近景靠边：原 x=2 石台直径 4 左缘压出生→小镇中心路线 → 右移到 x=3.5 让出中线
     WhiteBox.Cylinder(scene_, "GhostStone", Vector3(3.5, 0.3, 16), 4.0, 0.6, { 0.28, 0.26, 0.30 })
     WhiteBox.Sphere(scene_, "GhostMarker", Vector3(3.5, 1.3, 16), 0.5, { 0.55, 0.30, 0.34 }, { unlit = true })
+    -- 无面鬼处更醒目：暗红/冷色光柱 + 局部冷光
+    WhiteBox.Beacon(scene_, "Beacon_ghost", Vector3(3.5, 0.6, 16), { 0.72, 0.22, 0.28 }, 3.2)
+    WhiteBox.Beacon(scene_, "Beacon_ghost_cold", Vector3(4.4, 0.5, 16.8), { 0.38, 0.48, 0.72 }, 2.0)
+    local ghostLightNode = scene_:CreateChild("GhostGlow")
+    ghostLightNode.position = Vector3(3.5, 1.8, 16)
+    local ghostLight = ghostLightNode:CreateComponent("Light")
+    ghostLight.lightType = LIGHT_POINT
+    ghostLight.color = Color(0.72, 0.28, 0.36)
+    ghostLight.brightness = 0.8
+    ghostLight.range = 5.5
+    ghostLight.castShadows = false
 
-    -- 矿场小路（一排岩石球）
+    -- 矿场小路（岩石球 + 矮灯）
     local rockSpots = {
         Vector3(0, 0.25, -2), Vector3(1, 0.35, 5), Vector3(2, 0.45, 12), Vector3(3, 0.4, 19),
+        Vector3(-1.2, 0.3, 2), Vector3(0.4, 0.4, 8.5), Vector3(1.6, 0.32, 15.5),
+        Vector3(-0.6, 0.28, 11), Vector3(4.2, 0.38, 10),
     }
     for i, pos in ipairs(rockSpots) do
         WhiteBox.Sphere(scene_, "Rock" .. i, pos, 0.5 + (i % 2) * 0.2, { 0.30, 0.30, 0.34 })
+    end
+    local mineLamps = {
+        Vector3(-0.8, 0.4, 1.5), Vector3(1.8, 0.4, 9.2), Vector3(2.6, 0.4, 17.4),
+    }
+    for i, pos in ipairs(mineLamps) do
+        WhiteBox.Box(scene_, "MineLampPost" .. i, Vector3(pos.x, 0.55, pos.z), Vector3(0.14, 1.1, 0.14), { 0.22, 0.22, 0.28 })
+        WhiteBox.Sphere(scene_, "MineLamp" .. i, Vector3(pos.x, 1.2, pos.z), 0.22, { 0.85, 0.72, 0.42 }, { unlit = true })
+        WhiteBox.Beacon(scene_, "Beacon_mine_" .. i, pos, { 0.82, 0.68, 0.38 }, 1.0)
     end
 
     -- 三朵桃花（演示标记；water 跟随无面鬼石台右移）

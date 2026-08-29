@@ -131,6 +131,18 @@ function PlayerController.SetPosition(position)
     end
 end
 
+--- 调试：设置第三人称相机朝向（截图/直切场景用）
+---@param yaw number
+---@param pitch number
+function PlayerController.SetLook(yaw, pitch)
+    yaw_ = yaw or 0
+    pitch_ = pitch or 0
+    if character_ ~= nil then
+        character_.controls.yaw = yaw_
+        character_.controls.pitch = Clamp(pitch_, -PITCH_LIMIT, PITCH_LIMIT)
+    end
+end
+
 --- 注册桃花收集回调（FlowController 注入）
 ---@param handler function|nil function(key: string, node: Node)
 function PlayerController.SetBlossomHandler(handler)

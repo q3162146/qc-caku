@@ -411,18 +411,27 @@ function HandleUpdate(eventType, eventData)
     end
     if InputManager.IsKeyPress(KEY_F2) then
         print("[main] 调试：直切场景 chaoyang_gukou（流程状态不变）")
+        MainMenu.Close()
+        EndingScreen.Close()
         MediaPlayer.Stop(true)
         SceneManager.LoadScene("chaoyang_gukou")
+        PlayerController.SetLook(180, -8)
     end
     if InputManager.IsKeyPress(KEY_F3) then
         print("[main] 调试：直切场景 gu_nei_taolin（流程状态不变）")
+        MainMenu.Close()
+        EndingScreen.Close()
         MediaPlayer.Stop(true)
         SceneManager.LoadScene("gu_nei_taolin")
+        PlayerController.SetLook(180, -6)
     end
     if InputManager.IsKeyPress(KEY_F4) then
         print("[main] 调试：直切场景 luoshui_yinshan（流程状态不变）")
+        MainMenu.Close()
+        EndingScreen.Close()
         MediaPlayer.Stop(true)
         SceneManager.LoadScene("luoshui_yinshan")
+        PlayerController.SetLook(160, -6)
     end
     if InputManager.IsKeyPress(KEY_ESCAPE) then
         engine:Exit()
