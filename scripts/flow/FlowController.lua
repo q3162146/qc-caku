@@ -32,6 +32,8 @@ local data_ = nil          -- 共享 PlayerData（经 Sanitize 清洗）
 local state_ = nil         -- { chapterIndex, paragraphIndex, paragraph, collectCount, collected }
 ---@type table|nil
 local pendingDialogueAfterVideo_ = nil   -- 讲述段(对话+回忆视频)：视频播完后再进该段对白
+---@type function|nil
+local onGameEnd_ = nil   -- 结局段进入时回调（main 注入 → 显示主菜单）
 
 --- 初始化流程控制器（注入清洗后的 PlayerData）
 ---@param data table
@@ -140,8 +142,11 @@ function EnterParagraph()
         print("[Flow] 探索段（" .. tostring(p.goal or "") .. "）：收集 "
             .. state_.collectCount .. " 个标记点后继续")
     elseif p.type == "end" then
-        print("[Flow] 收尾段落（骨架期演示闭环）")
-        CompleteParagraph({ done = true })
+        -- 正式结局：回到主菜单（不再演示循环 P99→P01）
+        print("[Flow] 结局段落（返回主菜单）")
+        if onGameEnd_ ~= nil then
+            onGameEnd_()
+        end
     end
 end
 
@@ -394,6 +399,12 @@ function FindParagraphIndex(id)
         end
     end
     return nil, nil
+end
+
+--- 结局段进入时的回调（main 注入：显示主菜单 / 结束画面）
+---@param cb function|nil
+function FlowController.SetOnGameEnd(cb)
+    onGameEnd_ = cb
 end
 
 return FlowController

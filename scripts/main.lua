@@ -25,6 +25,7 @@ local InputManager = require "game.InputManager"
 local FlowController = require "flow.FlowController"
 local DialogueUI = require "ui.DialogueUI"
 local SaveMenu = require "ui.SaveMenu"
+local MainMenu = require "ui.MainMenu"
 local MediaPlayer = require "media.MediaPlayer"
 local VideoSpike = require "experiments.VideoSpike"
 local UI = require "urhox-libs/UI"
@@ -318,9 +319,13 @@ function Start()
     SaveMenu.Create(UI.GetRoot())
 
     FlowController.Init(data)
-    if not FlowController.Resume() then
-        FlowController.Start()
-    end
+    -- 结局段 → 返回主菜单
+    FlowController.SetOnGameEnd(function()
+        MainMenu.Show()
+    end)
+    -- 主菜单：由玩家选择"开始游戏 / 继续游戏"（不再启动即自动续档）
+    MainMenu.Create(UI.GetRoot())
+    MainMenu.Show()
 
     -- 6. 事件订阅
     SubscribeToEvent("Update", "HandleUpdate")
@@ -354,7 +359,7 @@ function HandleUpdate(eventType, eventData)
     end
 
     -- 对话/菜单打开时：只处理对应输入，玩家停移动（防串台）
-    if DialogueUI.IsOpen() or SaveMenu.IsOpen() then
+    if DialogueUI.IsOpen() or SaveMenu.IsOpen() or MainMenu.IsOpen() then
         PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话/菜单中串台）
         if DialogueUI.IsOpen() then
             DialogueUI.HandleInput()
