@@ -5,6 +5,7 @@
 
 | 版本 | 日期 | 变更摘要 |
 |------|------|---------|
+| v0.2.2-qa | 2026-08-30 | 整条主链真机验收出码（基于 8910045）：静态链 P01→…→P99 结局卡→主菜单已齐；SaveMenu 保存/读档、启动不再自动续档。LSP 0 Error、官方构建成功、140 帧 lua_errors=0；二维码已生成待真机整链+存档读档回归 |
 | v0.2.2-ending | 2026-08-30 | 正式结局画面 + 制作名单：新增 `scripts/ui/EndingScreen.lua`（round/release/legend 三套文案 + 制作名单 + 返回主菜单；一次建卡 SetText/SetVisible）。P43/P44/P45 加 `ending`；FlowController 记 `pendingEnding_` 并在 end 段回调带出；main 接 Show/SetOnReturn，结局卡打开锁移动。LSP 0 Error、官方构建成功、140 帧 lua_errors=0；二维码已生成待真机验证 |
 | v0.2.1-end | 2026-08-30 | 结局返回主菜单快速补测出码（基于 3eff7d3）：主菜单真机已通过，本次补「S6链直达结局」路径。核对 P31→P36→P41→P42→P43/44/45→P99(end)→`onGameEnd`→`MainMenu.Show()`，不再循环 P01。TTM 补：`MainMenu.Show` 打 `[MainMenu] 显示主菜单`；S6链/F10 直切前 `MainMenu.Close()` 避免遮罩挡住 P31。LSP 0 Error、官方构建成功、140 帧 lua_errors=0；二维码已生成待真机跑到结局 |
 | v0.2.1-menu | 2026-08-30 | 正式主菜单 + 结局返回（用户提交 f2482ed/f47ecb2）：新增 `scripts/ui/MainMenu.lua`（标题「桃素洛无幽 · 素女篇」+ 开始游戏/继续游戏，无档隐藏继续）；启动不再自动续档；`end` 段触发 `onGameEnd` 返回主菜单（P43/P44/P45 播完→P99 不再循环 P01）；`PlayerData.Clear` 删 slot1 + 返回全新默认数据（belief/blossoms 重置）。TTM 补：`onStartGame_` 标注 `function\|nil`（原 table 致 LSP Error）、`doStart` 先 `MediaPlayer.Stop(true)`、启动日志改为「等待主菜单选择」。LSP 0 Error、官方构建成功、140 帧 lua_errors=0（启动只见 `[MainMenu] 已创建主菜单`，不进 P01）；二维码已生成待真机验证 |
