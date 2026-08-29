@@ -178,4 +178,14 @@ function PlayerData.Load()
     return data
 end
 
+--- 清档：删除本地存档并返回一份全新默认数据（用于"开始新游戏"重置）
+---@return table 全新清洗后的 PlayerData
+function PlayerData.Clear()
+    if fileSystem:FileExists(PlayerData.SAVE_FILE) then
+        fileSystem:Delete(PlayerData.SAVE_FILE)
+        print("[PlayerData] 已删除存档 " .. PlayerData.SAVE_FILE)
+    end
+    return PlayerData.Sanitize(nil)
+end
+
 return PlayerData

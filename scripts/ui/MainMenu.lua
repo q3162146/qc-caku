@@ -18,8 +18,10 @@ local continueBtn_ = nil
 ---@type table|nil
 local onStartGame_ = nil   -- 开始新游戏后的回调（main 注入，用于关闭媒体/场景等）
 
---- 开始新游戏
+--- 开始新游戏（清档重置）
 local function doStart()
+    local fresh = PlayerData.Clear()   -- 删除存档 + 全新默认数据
+    FlowController.Init(fresh)
     FlowController.Start()
     MainMenu.Close()
     if onStartGame_ ~= nil then
