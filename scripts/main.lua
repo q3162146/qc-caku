@@ -283,10 +283,10 @@ function Start()
     PlayerController.Create(scene_)
     SceneManager.Init(scene_, PlayerController)
 
-    -- 4. 数据与流程：先尝试读档（磁盘 slot1），命中 mediaPos.node 则启动自动续档；否则全新开始
+    -- 4. 数据：启动只探测本地存档是否存在（供主菜单「继续游戏」），不再自动续档
     local data = PlayerData.Load()
     if data ~= nil then
-        print("[main] 检测到本地存档，尝试自动续档")
+        print("[main] 检测到本地存档，等待主菜单选择开始/继续")
     else
         data = PlayerData.Sanitize(nil)
     end
