@@ -25,7 +25,6 @@ local PlayerController = require "game.PlayerController"
 local InputManager = require "game.InputManager"
 local FlowController = require "flow.FlowController"
 local DialogueUI = require "ui.DialogueUI"
-local SaveMenu = require "ui.SaveMenu"
 local MainMenu = require "ui.MainMenu"
 local EndingScreen = require "ui.EndingScreen"
 local ChapterCard = require "ui.ChapterCard"
@@ -108,8 +107,8 @@ function ConfigurePortraitOrientation()
         .. tostring(graphics:GetHeight()) .. " | DPR=" .. tostring(graphics:GetDPR()))
 end
 
--- 真机触屏入口：S9 发布前移除。Spike 运行时会暂时接管 UI 根节点，结束后恢复此根节点。
-local function CreateVideoSpikeTrigger()
+--- 保证 HUD 持久根存在（对话层/章节卡/主菜单都挂这里，禁止后续 SetRoot 冲掉）
+local function EnsureHudRoot()
     local root = UI.GetRoot()
     if root == nil then
         root = UI.Panel {
@@ -119,118 +118,7 @@ local function CreateVideoSpikeTrigger()
         }
         UI.SetRoot(root)
     end
-
-    local trigger = UI.Button {
-        text = "Spike",
-        variant = "secondary",
-        position = "absolute",
-        top = 12,
-        left = 192,
-        width = 82,
-        height = 38,
-        fontSize = 14,
-        onClick = function()
-            print("[main] 触屏：视频生命周期 Spike")
-            VideoSpike.Toggle()
-        end,
-    }
-    root:AddChild(trigger)
-
-    local breakpointTrigger = UI.Button {
-        text = "断点",
-        variant = "secondary",
-        position = "absolute",
-        top = 12,
-        left = 102,
-        width = 82,
-        height = 38,
-        fontSize = 14,
-        onClick = function()
-            print("[main] 触屏：视频断点测试 Hook")
-            MediaPlayer.ToggleBreakpointTest()
-        end,
-    }
-    root:AddChild(breakpointTrigger)
-
-    -- F10 直切 S6 记忆印证链（ch3/P31）触屏入口：S9 前移除
-    local s6Trigger = UI.Button {
-        text = "S6链",
-        variant = "secondary",
-        position = "absolute",
-        top = 12,
-        left = 12,
-        width = 82,
-        height = 38,
-        fontSize = 14,
-        onClick = function()
-            print("[main] 触屏：直切 S6 记忆印证链（ch3/P31）")
-            MainMenu.Close()
-            MediaPlayer.Stop(true)
-            FlowController.DebugJumpToParagraph("P31")
-        end,
-    }
-    root:AddChild(s6Trigger)
-
-    -- F5 强制完成当前段落触屏入口：S9 前移除
-    local forceCompleteTrigger = UI.Button {
-        text = "完成",
-        variant = "secondary",
-        position = "absolute",
-        top = 58,
-        left = 12,
-        width = 82,
-        height = 38,
-        fontSize = 14,
-        onClick = function()
-            print("[main] 触屏：强制完成当前段落")
-            FlowController.DebugForceComplete()
-        end,
-    }
-    root:AddChild(forceCompleteTrigger)
-
-    -- F8 保存触屏入口：S9 前移除
-    local saveTrigger = UI.Button {
-        text = "保存",
-        variant = "secondary",
-        position = "absolute",
-        top = 58,
-        left = 102,
-        width = 82,
-        height = 38,
-        fontSize = 14,
-        onClick = function()
-            print("[main] 触屏：保存当前进度到 slot1")
-            FlowController.Persist()
-        end,
-    }
-    root:AddChild(saveTrigger)
-
-    -- F9 读档续播触屏入口：S9 前移除
-    local loadTrigger = UI.Button {
-        text = "读档",
-        variant = "secondary",
-        position = "absolute",
-        top = 58,
-        left = 192,
-        width = 82,
-        height = 38,
-        fontSize = 14,
-        onClick = function()
-            print("[main] 触屏：从 slot1 读档并续播")
-            local loaded = PlayerData.Load()
-            if loaded == nil then
-                print("[main] 读档续播失败：无本地存档")
-            else
-                MediaPlayer.Stop(true)
-                FlowController.Init(loaded)
-                if not FlowController.Resume() then
-                    FlowController.Start()
-                end
-            end
-        end,
-    }
-    root:AddChild(loadTrigger)
-    print("[main] 已创建左上角调试触屏入口：Spike(F6)/断点(F7)/S6链(F10)/完成(F5)/保存(F8)/读档(F9)（S9 前移除）")
+    return root
 end
 
 -- ============================================================================
@@ -274,7 +162,7 @@ function Start()
 
     -- 2. 输入抽象层
     InputManager.Initialize({ touchSensitivity = 2 })
-    -- GameHUD 提供自己的触屏摇杆+触摸视角，关平台默认屏上摇杆避免双摇杆
+    -- GameHUD 摇杆 + 滑动视角；关平台默认屏上摇杆，避免双摇杆/RunJump
     InputManager.DisableScreenJoystick()
 
     -- 3. UI 系统（对话/选项/字幕统一用 urhox-libs/UI）
@@ -295,34 +183,10 @@ function Start()
     else
         data = PlayerData.Sanitize(nil)
     end
-    CreateVideoSpikeTrigger()
+    EnsureHudRoot()
 
-    -- 场景名横幅（顶部居中，随场景切换更新；白模下辨识当前场景用）——S9 前可保留/移除
-    local bannerPanel = UI.Panel {
-        position = "absolute",
-        top = 0, left = 0, right = 0,
-        height = 60,
-        justifyContent = "center",
-        alignItems = "center",
-        pointerEvents = "none",
-        zIndex = 85,
-    }
-    local sceneBanner = UI.Label {
-        text = "「朝阳谷口」",
-        fontSize = 20,
-        fontColor = { 255, 245, 230, 255 },
-    }
-    bannerPanel:AddChild(sceneBanner)
-    UI.GetRoot():AddChild(bannerPanel)
-    SceneManager.SetOnSceneLoaded(function(name)
-        if sceneBanner ~= nil then
-            sceneBanner:SetText("「" .. tostring(name) .. "」")
-        end
-    end)
-
-    -- 存档/读档菜单（正式界面，把 F8/F9 做成菜单；S9 前保留）
+    -- 发布 UI：只保留主菜单 / 章节卡 / 对白 / 结局卡；调试按钮、场景横幅、存档菜单入口已移除
     GameAudio.Init(scene_)
-    SaveMenu.Create(UI.GetRoot())
     EndingScreen.Create(UI.GetRoot())
     ChapterCard.Create(UI.GetRoot())
     EndingScreen.SetOnReturn(function()
@@ -344,7 +208,7 @@ function Start()
 
     print("=== 启动完成 ===")
     print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | 竖屏 9:16 纵深布局")
-    print("调试：F5 强制完成段落 | F6 视频生命周期 Spike | F7 视频断点测试 Hook | F8 保存 | F9 读档续播 | F10 直切 S6 记忆印证链 | F2/F3/F4 直切三场景 | ESC 退出")
+    print("调试快捷键仍保留（画面无按钮）：F5 完成 | F6 Spike | F7 断点 | F8 保存 | F9 读档 | F10 S6链 | F2/F3/F4 场景 | ESC 退出")
 end
 
 function Stop()
@@ -376,8 +240,8 @@ function HandleUpdate(eventType, eventData)
         ChapterCard.Update(timeStep)
     end
 
-    if DialogueUI.IsOpen() or SaveMenu.IsOpen() or MainMenu.IsOpen() or EndingScreen.IsOpen() or ChapterCard.IsOpen() then
-        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话/菜单/结局卡/章节卡中串台）
+    if DialogueUI.IsOpen() or MainMenu.IsOpen() or EndingScreen.IsOpen() or ChapterCard.IsOpen() then
+        PlayerController.ClearMovement()  -- 锁定移动（防摇杆在对话/菜单/结局卡/章节卡中串台）
         if DialogueUI.IsOpen() then
             DialogueUI.HandleInput()
         end

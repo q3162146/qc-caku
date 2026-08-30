@@ -70,21 +70,7 @@ function SaveMenu.Create(root)
     if panel_ ~= nil then return true end
     if root == nil then return false end
 
-    -- 菜单入口按钮（右上偏下，避开 TapTap 浮层与左上角调试按钮；S9 前保留）
-    local menuBtn = UI.Button {
-        text = "菜单",
-        variant = "secondary",
-        position = "absolute",
-        top = 120,
-        right = 12,
-        width = 64,
-        height = 36,
-        fontSize = 14,
-        onClick = function() SaveMenu.Open() end,
-    }
-    root:AddChild(menuBtn)
-
-    -- 存档面板（居中，带遮罩）
+    -- 存档面板（居中，带遮罩）。发布 UI 不挂入口按钮，主菜单「继续游戏」承担读档。
     panel_ = UI.Panel {
         id = "saveMenuPanel",
         position = "absolute",
@@ -138,7 +124,7 @@ function SaveMenu.Create(root)
     panel_:AddChild(card)
     root:AddChild(panel_)
 
-    print("[SaveMenu] 已创建存档/读档菜单（S9 前保留）")
+    print("[SaveMenu] 已创建存档面板（无常驻入口）")
     return true
 end
 

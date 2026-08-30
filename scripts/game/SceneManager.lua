@@ -210,7 +210,7 @@ function BuildChaoyangGukou(root)
     -- 五朵五行桃花（谷口/桃树下/望夫崖/井边/守桃老人屋 的白模占位）
     local blossomSpots = {
         { key = "wood",   pos = Vector3(-6, 0.6, 14),   rgb = { 0.36, 0.72, 0.38 } },  -- 木（东）
-        { key = "fire",   pos = Vector3(6, 0.6, -10),   rgb = { 0.90, 0.35, 0.30 } },  -- 火（南）
+        { key = "fire",   pos = Vector3(4.5, 0.6, -6),  rgb = { 0.90, 0.35, 0.30 } },  -- 火（南，主路东侧，避开老人交互点）
         { key = "earth",  pos = Vector3(0, 0.6, -20),   rgb = { 0.78, 0.62, 0.36 } },  -- 土（中）
         { key = "metal",  pos = Vector3(-6, 0.6, -14),  rgb = { 0.82, 0.82, 0.86 } },  -- 金（西）
         { key = "water",  pos = Vector3(4, 0.6, 20),    rgb = { 0.34, 0.55, 0.85 } },  -- 水（北）

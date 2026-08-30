@@ -121,14 +121,18 @@ function EnterParagraph()
     state_.collected = 0
 
     -- 切章：先出章节卡，关掉后再真正进入段落（不阻塞无卡资源）
+    -- end 段（P99）从 ch4 跨回 ch1 时 chapterIndex 会变，但结局前不得弹章节卡
     if state_.chapterIndex ~= shownChapterIndex_ then
         shownChapterIndex_ = state_.chapterIndex
-        local chapterId = chapter.id or ("ch" .. tostring(state_.chapterIndex - 1))
-        print("[Flow] 切章 " .. chapterId .. " → 章节卡")
-        ChapterCard.Show(chapterId, function()
-            EnterParagraph()
-        end)
-        return
+        if p.type ~= "end" then
+            local chapterId = chapter.id or ("ch" .. tostring(state_.chapterIndex - 1))
+            print("[Flow] 切章 " .. chapterId .. " → 章节卡")
+            ChapterCard.Show(chapterId, function()
+                EnterParagraph()
+            end)
+            return
+        end
+        print("[Flow] 结局段跳过章节卡 " .. tostring(p.id))
     end
 
     print("[Flow] 进入段落 " .. p.id .. "（" .. p.type .. "）" .. (p.desc or ""))
@@ -180,6 +184,13 @@ function EnterParagraph()
         StartDialogueParagraph(p)
     elseif p.type == "explore" then
         state_.collectCount = p.collectCount or 3
+        -- 采集段按本段场景现有标记重新计数（新开局/重进 P11 不带旧档花朵）
+        if p.hotspots ~= nil then
+            for _, h in ipairs(p.hotspots) do
+                data_.blossoms[h] = false
+            end
+            state_.collected = 0
+        end
         print("[Flow] 探索段（" .. tostring(p.goal or "") .. "）：收集 "
             .. state_.collectCount .. " 个标记点后继续")
     elseif p.type == "end" then
@@ -291,6 +302,29 @@ function FlowController.OnBlossomCollected(key, node)
         return
     end
 
+    -- 采集段只认 hotspots / 五行桃花，忽略 Int_oldman 等交互点（防无独白也计入 5）
+    local allowed = p.hotspots
+    if allowed ~= nil then
+        local ok = false
+        for _, h in ipairs(allowed) do
+            if h == key then
+                ok = true
+                break
+            end
+        end
+        if not ok then
+            print("[Flow] 采集段 " .. p.id .. " 忽略非桃花拾取: " .. tostring(key))
+            return
+        end
+    elseif data_.blossoms[key] == nil then
+        print("[Flow] 采集段 " .. p.id .. " 忽略未知拾取: " .. tostring(key))
+        return
+    end
+    if data_.blossoms[key] == true then
+        print("[Flow] 采集段 " .. p.id .. " 已拾取过: " .. tostring(key))
+        return
+    end
+
     -- 采集：先移除标记节点与其辨识光柱（避免对话中拾取丢失 / 残留空柱）
     if node ~= nil then
         local beacon = node.parent and node.parent:GetChild("Beacon_" .. key, true)
@@ -299,14 +333,18 @@ function FlowController.OnBlossomCollected(key, node)
     end
 
     -- 数据变化：写入共享 PlayerData（五行桃花 + 札记占位）
-    if data_.blossoms[key] ~= nil then
-        data_.blossoms[key] = true
-    end
+    data_.blossoms[key] = true
     if data_.journal ~= nil then
         data_.journal[key] = true
     end
-    state_.collected = state_.collected + 1
-    print("[Flow] 桃花进度 " .. state_.collected .. "/" .. state_.collectCount)
+    local n = 0
+    for _, taken in pairs(data_.blossoms) do
+        if taken then
+            n = n + 1
+        end
+    end
+    state_.collected = n
+    print("[Flow] 桃花进度 " .. state_.collected .. "/" .. state_.collectCount .. " | 本朵=" .. tostring(key))
 
     -- 达到收集数后完成（拾取触发的独白播完后再判，避免与探索串台）
     local finish = function()
