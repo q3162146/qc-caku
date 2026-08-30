@@ -22,6 +22,8 @@ local scene_ = nil
 local playerNode_ = nil
 ---@type CharacterComponent|nil
 local character_ = nil
+---@type KinematicCharacterController|nil
+local kcc_ = nil
 ---@type ThirdPersonCameraInstance|nil
 local tpCamera_ = nil
 ---@type number
@@ -39,6 +41,13 @@ local MOUSE_SENSITIVITY = 0.15   -- 鼠标灵敏度（度/像素）
 local PITCH_LIMIT = 80.0
 local PICKUP_RADIUS = 1.6        -- 走近拾取/交互半径（米；真机摇杆走近需略大于白模球体）
 
+-- 素女 3D 模型（create_3d_asset 生成；rig 服务侧不可绑时回退静态 MDL，视觉为静态网格随节点整体转向/移动）
+-- 模型包围盒（model-info 实测）：Size ≈ (0.42, 1.0, 0.47)，中心居中（Min Y ≈ -0.5）
+-- 用虚拟路径加载 Model/Material（不依赖 uuid 路由；材质 xml 内贴图也已改虚拟路径）
+local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619.mdl"
+local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
+local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉匹配
+
 --- 创建玩家与相机
 ---@param scene Scene
 ---@return boolean
@@ -51,16 +60,36 @@ function PlayerController.Create(scene)
     -- 玩家节点
     playerNode_ = scene:CreateChild("Player")
 
-    -- 视觉：球体身体（白模，后续换正式模型）
-    -- R12（2026-08-22）：视觉球体缩小（胶囊 0.7×1.8 仅作碰撞，视觉约 1.2m 高），
-    --   修复真机复核「玩家占屏 1/4~1/3、遮挡无涕桃与前进路线」
+    -- 视觉：素女 3D 模型（create_3d_asset 生成，texture 版静态 MDL；
+    --   rig 服务侧 biped 可绑性检查两次不通过，回退静态网格，随节点整体转向/移动）
+    --   虚拟路径加载 Model + Material；加载失败回退原白模球，保证玩法不破
     local modelNode = playerNode_:CreateChild("ModelNode")
-    local bodyModel = modelNode:CreateComponent("StaticModel")
-    bodyModel:SetModel(cache:GetResource("Model", "Models/Sphere.mdl"))
-    bodyModel:SetMaterial(WhiteBoxCreatePlayerMaterial())
-    bodyModel.castShadows = true
-    modelNode.scale = Vector3(0.45, 0.6, 0.45)
-    modelNode.position = Vector3(0, 0.65, 0)
+    local sunuModel = cache:GetResource("Model", SUNU_MODEL)
+    local sunuMat = cache:GetResource("Material", SUNU_MATERIAL)
+    if sunuModel ~= nil then
+        local bodyModel = modelNode:CreateComponent("StaticModel")
+        bodyModel:SetModel(sunuModel)
+        if sunuMat ~= nil then
+            bodyModel:SetMaterial(sunuMat)
+        end
+        bodyModel.castShadows = true
+        -- 模型包围盒 ≈ 1.0m 高且中心居中（Min Y ≈ -0.5）→ 等比缩放到目标身高，
+        -- 并上移半身高使脚底落地（与胶囊 1.8 对齐）
+        modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
+        modelNode.position = Vector3(0, SUNU_HEIGHT / 2, 0)
+        -- 网格视觉正面在 +X，节点前向为 +Z（CharacterComponent 面向移动方向）→ 绕 Y +90°，
+        -- 行走时相机看到背影（第三人称惯例，截图实测）
+        modelNode:SetRotation(Quaternion(90, Vector3.UP))
+        print("[PlayerController] 素女模型已加载: " .. SUNU_MODEL)
+    else
+        print("[PlayerController] 警告：素女模型加载失败，回退白模球")
+        local bodyModel = modelNode:CreateComponent("StaticModel")
+        bodyModel:SetModel(cache:GetResource("Model", "Models/Sphere.mdl"))
+        bodyModel:SetMaterial(WhiteBoxCreatePlayerMaterial())
+        bodyModel.castShadows = true
+        modelNode.scale = Vector3(0.45, 0.6, 0.45)
+        modelNode.position = Vector3(0, 0.65, 0)
+    end
 
     -- 刚体（运动学角色：KCC 驱动，RigidBody 只负责碰撞事件）
     local body = playerNode_:CreateComponent("RigidBody")
@@ -79,6 +108,7 @@ function PlayerController.Create(scene)
     local kcc = playerNode_:CreateComponent("KinematicCharacterController")
     kcc:SetCollisionLayerAndMask(WhiteBox.LAYER_PLAYER, WhiteBox.LAYER_GROUND)
     kcc:SetJumpSpeed(8.0)
+    kcc_ = kcc
 
     -- 角色组件（只处理物理移动）
     character_ = playerNode_:CreateComponent("CharacterComponent")
@@ -126,7 +156,13 @@ end
 ---@param position Vector3
 function PlayerController.SetPosition(position)
     if playerNode_ ~= nil and position ~= nil then
-        playerNode_.position = Vector3(position.x, 0.6, position.z)
+        local target = Vector3(position.x, 0.6, position.z)
+        playerNode_.position = target
+        -- KCC 内部运动学状态不会跟随节点直接赋值，首帧物理步进会把玩家拉回旧位
+        -- （出生点落在无涕桃树冠内等碰撞体时表现尤为明显）；Warp 同步 KCC 状态。
+        if kcc_ ~= nil then
+            kcc_:Warp(target)
+        end
     end
 end
 

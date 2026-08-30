@@ -119,9 +119,9 @@ function SceneManager.LoadScene(sceneName)
         spawn = BuildLuoShuiYinShan(sceneRoot_)
     end
 
-    -- 玩家回到出生点
+    -- 玩家回到出生点（PlayerController.SetPosition 为 dot 风格 API，勿用冒号调用）
     if player_ ~= nil and spawn ~= nil then
-        player_:SetPosition(spawn)
+        player_.SetPosition(spawn)
         print("[SceneManager] 玩家出生点: " .. tostring(spawn.x) .. ", " .. tostring(spawn.y) .. ", " .. tostring(spawn.z))
     end
 
