@@ -12,6 +12,7 @@ local UI = require "urhox-libs/UI"
 local InputManager = require "game.InputManager"
 local GameAudio = require "audio.GameAudio"
 local VoiceMap = require "config.VoiceMap"
+local SceneManager = require "game.SceneManager"
 
 local DialogueUI = {}
 
@@ -52,6 +53,32 @@ local function mountPanel(panel)
     layer:ClearChildren()
     layer:AddChild(panel)
     layer:SetVisible(true)
+end
+
+local SCENE_BG = {
+    chaoyang_gukou = "image/立绘/场景_朝阳谷口.png",
+    luoshui_yinshan = "image/立绘/场景_洛水阴山.png",
+    gu_nei_taolin = "image/立绘/场景_谷内桃林.png",
+}
+
+local NPC_PORTRAIT = {
+    ["守桃老人"] = "image/立绘/守桃老人.jpg",
+    ["无面鬼"] = "image/立绘/无面鬼.png",
+    ["素女"] = "image/立绘/素女.jpg",
+    ["旁白"] = "image/立绘/场景_朝阳谷口.png",
+}
+
+---@return string|nil
+local function choiceBackdrop()
+    local sceneId = SceneManager.GetCurrentScene and SceneManager.GetCurrentScene() or nil
+    if sceneId ~= nil and SCENE_BG[sceneId] ~= nil then
+        return SCENE_BG[sceneId]
+    end
+    local npc = state_ and state_.spec and state_.spec.npc
+    if npc ~= nil and NPC_PORTRAIT[npc] ~= nil then
+        return NPC_PORTRAIT[npc]
+    end
+    return "image/立绘/场景_朝阳谷口.png"
 end
 
 --- 对话是否打开（主循环据此停玩家移动）
@@ -125,34 +152,44 @@ function RenderText()
         GameAudio.PlayVoice(voice)
     end
 
+    local isNarrator = (npc == "旁白" or npc == "")
     mountPanel(UI.Panel {
         position = "absolute",
-        bottom = 0, left = 0, right = 0,
-        padding = { 18, 22 },
-        backgroundColor = { 16, 14, 24, 228 },
+        top = 0, left = 0, right = 0, bottom = 0,
+        pointerEvents = "box-none",
         children = {
-            UI.Label {
-                text = npc,
-                fontSize = 15,
-                fontColor = { 255, 214, 158, 255 },
-                width = "100%",
-            },
-            UI.Label {
-                text = text,
-                fontSize = 18,
-                fontColor = { 246, 241, 231, 255 },
-                width = "100%",
-                maxLines = 5,
-                marginTop = 8,
-            },
-            UI.Button {
-                text = hasMore and "继续 ›" or "下一步",
-                variant = "secondary",
-                alignSelf = "flex-end",
-                marginTop = 10,
-                onClick = function()
-                    AdvanceText()
-                end,
+            UI.Panel {
+                position = "absolute",
+                left = 10, right = 10, bottom = 16,
+                padding = { 16, 18, 18, 18 },
+                backgroundColor = { 42, 28, 18, 168 },
+                borderRadius = 16,
+                children = {
+                    UI.Label {
+                        text = npc,
+                        fontSize = 18,
+                        fontColor = { 255, 214, 158, 255 },
+                        width = "100%",
+                        visible = npc ~= "",
+                    },
+                    UI.Label {
+                        text = text,
+                        fontSize = isNarrator and 26 or 22,
+                        fontColor = { 255, 248, 236, 255 },
+                        width = "100%",
+                        maxLines = 6,
+                        marginTop = 8,
+                    },
+                    UI.Button {
+                        text = hasMore and "继续 ›" or "下一步",
+                        variant = "secondary",
+                        alignSelf = "flex-end",
+                        marginTop = 12,
+                        onClick = function()
+                            AdvanceText()
+                        end,
+                    },
+                },
             },
         },
     })
@@ -188,10 +225,10 @@ function RenderChoice()
     local children = {
         UI.Label {
             text = spec.prompt or "",
-            fontSize = 18,
-            fontColor = { 246, 241, 231, 255 },
+            fontSize = 22,
+            fontColor = { 255, 248, 236, 255 },
             width = "100%",
-            maxLines = 3,
+            maxLines = 4,
         },
     }
 
@@ -213,7 +250,8 @@ function RenderChoice()
                 text = label,
                 variant = "secondary",
                 textAlign = "left",
-                marginTop = 8,
+                height = 52,
+                marginTop = 10,
                 onClick = function()
                     if s.locked then return end
                     GameAudio.PlaySfx("audio/sfx/sfx_ui_click.mp3")
@@ -229,12 +267,26 @@ function RenderChoice()
         end
     end
 
+    local backdrop = choiceBackdrop()
     mountPanel(UI.Panel {
         position = "absolute",
-        bottom = 0, left = 0, right = 0,
-        padding = { 18, 22 },
-        backgroundColor = { 16, 14, 24, 235 },
-        children = children,
+        top = 0, left = 0, right = 0, bottom = 0,
+        backgroundImage = backdrop,
+        backgroundColor = { 20, 12, 8, 90 },
+        justifyContent = "flex-end",
+        children = {
+            UI.Panel {
+                width = "100%",
+                height = "42%",
+                backgroundColor = { 12, 8, 6, 70 },
+            },
+            UI.Panel {
+                width = "100%",
+                padding = { 18, 16, 28, 16 },
+                backgroundColor = { 42, 28, 18, 176 },
+                children = children,
+            },
+        },
     })
 end
 

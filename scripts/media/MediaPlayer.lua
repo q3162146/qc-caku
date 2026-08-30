@@ -14,6 +14,7 @@ local UI = require "urhox-libs/UI"
 local Video = require "urhox-libs/Video"
 local PlayerData = require "config.PlayerData"
 local GameAudio = require "audio.GameAudio"
+local VideoSubtitles = require "config.VideoSubtitles"
 
 local MediaPlayer = {}
 
@@ -292,6 +293,19 @@ end
 local function hideMask()
     if session_ ~= nil and session_.mask ~= nil then
         session_.mask:SetVisible(false)
+    end
+end
+
+local function updateCaption(time)
+    if session_ == nil or session_.captionLabel_ == nil then return end
+    local videoId = session_.paragraph and session_.paragraph.video
+    local text = VideoSubtitles.CueAt(videoId, time) or ""
+    if session_.captionText_ ~= text then
+        session_.captionText_ = text
+        session_.captionLabel_:SetText(text)
+        if session_.captionBar_ ~= nil then
+            session_.captionBar_:SetVisible(text ~= "")
+        end
     end
 end
 
@@ -581,6 +595,7 @@ local function onTimeUpdate(self, time, duration)
     if session_.phase == "PLAY" then
         writeMediaPosition(session_.data, session_.paragraph,
             session_.breakpointIndex, time)
+        updateCaption(time)
         checkBreakpoint(time)
     end
 end
@@ -656,16 +671,20 @@ function MediaPlayer.Play(paragraph, data)
         id = "mediaMask",
         position = "absolute",
         top = 0, left = 0, right = 0, bottom = 0,
-        backgroundColor = { 8, 8, 12, 250 },
-        justifyContent = "center",
+        backgroundColor = { 18, 12, 10, 140 },
+        justifyContent = "flex-end",
         alignItems = "center",
-        gap = 12,
+        padding = { 24, 18, 48, 18 },
+        gap = 10,
         zIndex = 90,
     }
     local maskText = UI.Label {
         text = "加载剧情视频...",
-        fontSize = 18,
-        fontColor = { 246, 241, 231, 255 },
+        fontSize = 22,
+        fontColor = { 255, 248, 236, 255 },
+        width = "100%",
+        textAlign = "center",
+        maxLines = 3,
     }
     local breakpointButton = UI.Button {
         text = "继续",
@@ -747,11 +766,59 @@ function MediaPlayer.Play(paragraph, data)
     session_.choiceLocked = false
     resumeCallback = resumeFromBreakpoint
 
+    local pack = VideoSubtitles.Get(paragraph.video)
+    local chapterTitle = (pack and pack.title) or ""
+    local titleChip = UI.Panel {
+        position = "absolute",
+        top = 18,
+        left = 14,
+        right = 14,
+        padding = { 8, 12 },
+        backgroundColor = { 28, 18, 12, 150 },
+        borderRadius = 8,
+        pointerEvents = "none",
+        zIndex = 40,
+        visible = chapterTitle ~= "",
+        children = {
+            UI.Label {
+                text = chapterTitle,
+                fontSize = 16,
+                fontColor = { 255, 226, 186, 255 },
+                width = "100%",
+                textAlign = "center",
+            },
+        },
+    }
+    local captionLabel = UI.Label {
+        text = "",
+        fontSize = 22,
+        fontColor = { 255, 248, 236, 255 },
+        width = "100%",
+        maxLines = 4,
+        textAlign = "center",
+    }
+    local captionBar = UI.Panel {
+        position = "absolute",
+        left = 12,
+        right = 12,
+        bottom = 28,
+        padding = { 12, 14 },
+        backgroundColor = { 16, 10, 8, 168 },
+        borderRadius = 10,
+        pointerEvents = "none",
+        zIndex = 40,
+        visible = false,
+        children = { captionLabel },
+    }
+    session_.captionLabel_ = captionLabel
+    session_.captionBar_ = captionBar
+    session_.captionText_ = ""
+
     videoRoot_ = UI.Panel {
         width = "100%",
         height = "100%",
         backgroundColor = { 0, 0, 0, 255 },
-        children = { player, mask },
+        children = { player, titleChip, captionBar, mask },
     }
     UI.SetRoot(videoRoot_)
     subscribeLifecycle()

@@ -5,8 +5,8 @@
 # 项目记忆索引
 
 项目：桃素洛无幽·素女篇
-当前版本：v0.3.7-ship（发布前低风险清理）
-简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；主链 P01→P99 + 正式视频/配音/章节卡/音效已接线。本轮：删 VIDEO_SOURCES 未用占位键、移除 Spike 入口并把测试片/CGT 中间产物移出 assets。真机整链回归仍待补。
+当前版本：v0.3.8-ui（视频字幕/对话透明加大/三选应景底）
+简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；主链 P01→P99 已接线。本轮：视频叠字幕+章回名；对话去黑底加大字；三选用立绘/场景底图。白模换真模未做（独立大任务）。
 最后巩固：2026-08-30
 
 ## 项目概况
@@ -80,7 +80,8 @@
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
-- 2026-08-31 **发布前低风险清理（本会话）**：`VIDEO_SOURCES` 删除未引用 `S6/S10~S13`（主链只用 `S6-1..5` + `S7/S8/S9`）；`main.lua` 去掉 `VideoSpike`/`F6`；Spike 模块与三档测试片、CGT 中间产物、章节卡源图、剧情尾帧移出 `assets/`/`scripts/` 到 `_dev/`（全量 `**` 引用不再打进包）。竖屏 `SetOrientations("Portrait")` + `taptap_publish.screen_orientation=portrait` 仍在。主链视频/配音/音效/章节卡路径字面量均存在。F5/F7–F10/F2–F4 键盘调试键保留（画面无按钮）。LSP / 官方构建见本轮结果。⚠️ 真机整链与三轴结局仍待补；增强引用（`scripts/**`）未切，需用户确认。
+- 2026-08-31 **对话 UI 整改 ①②③（本会话）**：新增 `VideoSubtitles.lua`（S1~S9 分段旁白）；`MediaPlayer` 顶部章回名 + 底部字幕条（fontSize 22，半透明暖底），S6 断点三选遮罩改为半透明不再纯黑。`DialogueUI` 对白框暖色半透明、对白 22 / 旁白 26；三选全屏应景 `backgroundImage`（场景图/立绘）+ 底部选项浮层。④ 白模→真模未做：玩家仍 Sphere、老人圆柱+球、三场景 WhiteBox，需独立排期（生成/导入模型并锁交互坐标）。LSP / 官方构建见本轮。⚠️ 真机截图/录屏仍待补。
+- 2026-08-31 **发布前低风险清理**：`VIDEO_SOURCES` 删除未引用 `S6/S10~S13`（主链只用 `S6-1..5` + `S7/S8/S9`）；`main.lua` 去掉 `VideoSpike`/`F6`；Spike 模块与三档测试片、CGT 中间产物、章节卡源图、剧情尾帧移出 `assets/`/`scripts/` 到 `_dev/`（全量 `**` 引用不再打进包）。竖屏 `SetOrientations("Portrait")` + `taptap_publish.screen_orientation=portrait` 仍在。主链视频/配音/音效/章节卡路径字面量均存在。F5/F7–F10/F2–F4 键盘调试键保留（画面无按钮）。LSP / 官方构建见本轮结果。⚠️ 真机整链与三轴结局仍待补；增强引用（`scripts/**`）未切，需用户确认。
 - 2026-08-30 **真机验收遗留 3 项**：① `EnterParagraph` 对 `p.type=="end"` 跳过章节卡（P43/44/45→P99 不再闪 ch1「收集·朝阳之谷」）；② P11 只认 `hotspots` 五行花、按 `blossoms` 去重计数，忽略 `Int_oldman`；fire 移到 `(4.5,0.6,-6)` 主路东侧，拾取半径 1.1→1.6。③ 去掉 Spike/断点/S6链/完成/保存/读档触屏按钮、场景横幅、SaveMenu 常驻入口、GameHUD Run/Jump；保留移动摇杆+滑动视角（真机探索必需）与主菜单开始/继续。LSP 0 Error、官方构建成功。⚠️ 真机复验：P99 前不弹章卡、5 朵=5 独白含 fire、调试 HUD 已清。
 - 2026-08-30 **整条主链正式素材验收修补**：静态主链 P01→P99 与 S1–S9 / 配音 / 音效 / 章节卡全部对上。修 4 处阻断：① `DialogueUI` 不再 `UI.SetRoot`（改挂 HUD 叠层，章节卡/主菜单不被冲掉）；② P11 五行独白补 `linesKey`（`sunu_blossom_*` 可播）；③ 章节卡文案对齐清单；④ `MediaPlayer.Play` 失败自动通过。P03 `choiceOrder` 固定重逢/放手/传说；视频恢复 HUD 时 `destroyOld=false`。LSP 0 Error、官方构建成功、启动 `lua_errors=0`。
 - 2026-08-30 **配音/章节卡/音效接入（本会话）**：`GameAudio` 统一配音+音效+环境音；`VoiceMap` 按 linesKey 第 1 行播长配音（后续行不打断）；`DialogueUI` 翻页 `sfx_ui_page`、三选 `sfx_choice_open`、点选项 `sfx_ui_click`。`ChapterCard` 切章展示 1.8s（ch0 楔子/ch1 春信/ch2 洛水阴/ch3 记忆印/ch4 尾声）；读档不重弹。MediaPlayer 断点三选/信念+1、EndingScreen 浮现音、主菜单确认音。关掉 `DEBUG_LIFEPLATE`。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。

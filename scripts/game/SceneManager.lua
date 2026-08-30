@@ -75,6 +75,11 @@ function SceneManager.SetOnSceneLoaded(cb)
     onSceneLoaded_ = cb
 end
 
+---@return string
+function SceneManager.GetCurrentScene()
+    return currentScene_
+end
+
 --- 加载指定场景（销毁旧场景内容并重建）
 ---@param sceneName string 场景键（见 SCENE_MOOD）
 ---@return boolean 是否成功
