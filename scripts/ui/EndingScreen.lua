@@ -5,6 +5,7 @@
 -- ============================================================================
 
 local UI = require "urhox-libs/UI"
+local GameAudio = require "audio.GameAudio"
 
 local EndingScreen = {}
 
@@ -94,6 +95,7 @@ function EndingScreen.Show(endingKey)
         end
     end
     root_:SetVisible(true)
+    GameAudio.PlaySfx("audio/sfx/sfx_ending_card.mp3")
     print("[EndingScreen] 显示结局卡 | key=" .. tostring(key) .. " | " .. tostring(copy.title))
 end
 

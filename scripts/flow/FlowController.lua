@@ -23,6 +23,8 @@ local DialogueUI = require "ui.DialogueUI"
 local SceneManager = require "game.SceneManager"
 local PlayerController = require "game.PlayerController"
 local MediaPlayer = require "media.MediaPlayer"
+local ChapterCard = require "ui.ChapterCard"
+local GameAudio = require "audio.GameAudio"
 
 local FlowController = {}
 
@@ -36,6 +38,8 @@ local pendingDialogueAfterVideo_ = nil   -- 讲述段(对话+回忆视频)：视
 local pendingEnding_ = nil   -- 最近进入的结局类型（round/release/legend），end 段回调带出
 ---@type function|nil
 local onGameEnd_ = nil   -- 结局段进入时回调（main 注入 → 显示结局卡）
+---@type number
+local shownChapterIndex_ = 0   -- 已展示过章节卡的章号（切章才再弹）
 
 --- 初始化流程控制器（注入清洗后的 PlayerData）
 ---@param data table
@@ -43,6 +47,7 @@ function FlowController.Init(data)
     data_ = data
     pendingEnding_ = nil
     pendingDialogueAfterVideo_ = nil
+    shownChapterIndex_ = 0
     MediaPlayer.SetCompleteHandler(function(result)
         -- 讲述段(对话+回忆视频)：视频播完 → 播该段对白；否则按正常收尾推进
         if pendingDialogueAfterVideo_ ~= nil then
@@ -83,6 +88,7 @@ function FlowController.Resume()
         return false
     end
     state_ = { chapterIndex = ci, paragraphIndex = pi, collected = 0 }
+    shownChapterIndex_ = ci   -- 续档不重弹章节卡
     PlayerController.SetBlossomHandler(FlowController.OnBlossomCollected)
     print("[Flow] 读档恢复：定位段落 " .. tostring(mp.node) .. "（" .. tostring(mp.video) .. " @ " .. tostring(mp.timeSec) .. "）")
     EnterParagraph()
@@ -114,6 +120,17 @@ function EnterParagraph()
     state_.paragraph = p
     state_.collected = 0
 
+    -- 切章：先出章节卡，关掉后再真正进入段落（不阻塞无卡资源）
+    if state_.chapterIndex ~= shownChapterIndex_ then
+        shownChapterIndex_ = state_.chapterIndex
+        local chapterId = chapter.id or ("ch" .. tostring(state_.chapterIndex - 1))
+        print("[Flow] 切章 " .. chapterId .. " → 章节卡")
+        ChapterCard.Show(chapterId, function()
+            EnterParagraph()
+        end)
+        return
+    end
+
     print("[Flow] 进入段落 " .. p.id .. "（" .. p.type .. "）" .. (p.desc or ""))
 
     -- 记录最近结局类型（P43/P44/P45 带 ending 字段），供 end 段回调带给 EndingScreen
@@ -126,6 +143,13 @@ function EnterParagraph()
     if p.scene then
         MediaPlayer.Stop(true)
         SceneManager.LoadScene(p.scene)
+        if p.scene == "luoshui_yinshan" then
+            GameAudio.PlayAmbient("audio/sfx/sfx_wind.mp3")
+        elseif p.scene == "chaoyang_gukou" then
+            GameAudio.PlayAmbient("audio/sfx/sfx_wind.mp3")
+        else
+            GameAudio.PlayAmbient("audio/sfx/sfx_rain_snow.mp3")
+        end
     end
 
     -- 关键状态落盘：进入新段落即更新 mediaPos.node（当前段落 id），供启动自动续档定位。
@@ -173,6 +197,7 @@ function StartInteractionDialogue(p)
     local dlg = {
         npc = spec.npc,
         lines = spec.lines,
+        linesKey = p.interaction.lines,
     }
     dlg.onDone = function()
         CompleteParagraph({ done = true })
@@ -199,6 +224,7 @@ function StartDialogueParagraph(p)
         prompt = spec.prompt,
         choices = spec.choices,
         choiceOrder = spec.choiceOrder,
+        linesKey = p.lines,
     }
 
     if p.type == "choice" then

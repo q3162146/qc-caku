@@ -13,6 +13,7 @@
 local UI = require "urhox-libs/UI"
 local Video = require "urhox-libs/Video"
 local PlayerData = require "config.PlayerData"
+local GameAudio = require "audio.GameAudio"
 
 local MediaPlayer = {}
 
@@ -144,6 +145,7 @@ local function renderBreakpointChoices()
         button:SetVisible(true)
     end
     session_.phase = "PAUSED_AT_BREAKPOINT"
+    GameAudio.PlaySfx("audio/sfx/sfx_choice_open.mp3")
     log("断点读档 Seek 双确认完成 | 断点不重复触发 | 显示三选")
 end
 
@@ -170,6 +172,7 @@ local function handleBreakpointChoice(key)
     local belief = session_.data and session_.data.belief
     if axis ~= nil and belief ~= nil and belief[axis] ~= nil then
         belief[axis] = belief[axis] + 1
+        GameAudio.PlaySfx("audio/sfx/sfx_belief_plus.mp3")
     end
     log("断点交互选择已锁定 | key=" .. tostring(key)
         .. " | belief=" .. tostring(axis and scene_belief_value(axis) or 0))

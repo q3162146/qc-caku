@@ -1,3 +1,11 @@
+-- 【实验】发布素女篇前必须改为 false 或删除本段
+-- 改为 false 后：不 require lifeplate，素女篇原入口正常、无命盘残留加载。
+-- 销毁方式：删 scripts/lifeplate/ + assets/textures/lifeplate/ + assets/audio/lifeplate/
+local DEBUG_LIFEPLATE = true
+if DEBUG_LIFEPLATE then
+    return require("lifeplate.lp_main").run()
+end
+
 -- ============================================================================
 -- main.lua ——《桃素洛无幽·素女篇》唯一业务入口
 --
@@ -27,6 +35,8 @@ local DialogueUI = require "ui.DialogueUI"
 local SaveMenu = require "ui.SaveMenu"
 local MainMenu = require "ui.MainMenu"
 local EndingScreen = require "ui.EndingScreen"
+local ChapterCard = require "ui.ChapterCard"
+local GameAudio = require "audio.GameAudio"
 local MediaPlayer = require "media.MediaPlayer"
 local VideoSpike = require "experiments.VideoSpike"
 local UI = require "urhox-libs/UI"
@@ -318,8 +328,10 @@ function Start()
     end)
 
     -- 存档/读档菜单（正式界面，把 F8/F9 做成菜单；S9 前保留）
+    GameAudio.Init(scene_)
     SaveMenu.Create(UI.GetRoot())
     EndingScreen.Create(UI.GetRoot())
+    ChapterCard.Create(UI.GetRoot())
     EndingScreen.SetOnReturn(function()
         MainMenu.Show()
     end)
@@ -344,6 +356,7 @@ end
 
 function Stop()
     MediaPlayer.Stop(true)
+    GameAudio.StopAll()
     InputManager.Shutdown()
     UI.Shutdown()
     print("[main] 停止")
@@ -365,8 +378,13 @@ function HandleUpdate(eventType, eventData)
     end
 
     -- 对话/菜单打开时：只处理对应输入，玩家停移动（防串台）
-    if DialogueUI.IsOpen() or SaveMenu.IsOpen() or MainMenu.IsOpen() or EndingScreen.IsOpen() then
-        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话/菜单/结局卡中串台）
+    GameAudio.Tick()
+    if ChapterCard.IsOpen() then
+        ChapterCard.Update(timeStep)
+    end
+
+    if DialogueUI.IsOpen() or SaveMenu.IsOpen() or MainMenu.IsOpen() or EndingScreen.IsOpen() or ChapterCard.IsOpen() then
+        PlayerController.ClearMovement()   -- 锁定移动（防 GameHUD 摇杆在对话/菜单/结局卡/章节卡中串台）
         if DialogueUI.IsOpen() then
             DialogueUI.HandleInput()
         end

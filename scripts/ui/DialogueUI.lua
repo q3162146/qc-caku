@@ -9,6 +9,8 @@
 
 local UI = require "urhox-libs/UI"
 local InputManager = require "game.InputManager"
+local GameAudio = require "audio.GameAudio"
+local VoiceMap = require "config.VoiceMap"
 
 local DialogueUI = {}
 
@@ -26,6 +28,7 @@ end
 --- 关闭对话（清空 UI 根）
 function DialogueUI.Hide()
     if not open_ then return end
+    GameAudio.StopVoice()
     UI.SetRoot(UI.Panel { width = "100%", height = "100%", pointerEvents = "box-none" })
     open_ = false
     state_ = nil
@@ -79,6 +82,10 @@ function RenderText()
     local hasMore = s.lineIndex < #lines
     local text = lines[s.lineIndex] or ""
     local npc = spec.npc or ""
+    local voice = VoiceMap.Get(spec.linesKey, s.lineIndex)
+    if voice ~= nil then
+        GameAudio.PlayVoice(voice)
+    end
 
     UI.SetRoot(UI.Panel {
         position = "absolute",
@@ -120,12 +127,14 @@ function AdvanceText()
     local spec = s.spec
     local lines = spec.lines or spec.intro or {}
     if s.lineIndex < #lines then
+        GameAudio.PlaySfx("audio/sfx/sfx_ui_page.mp3")
         s.lineIndex = s.lineIndex + 1
         RenderText()
         return
     end
     if spec.choices then
         s.phase = "choice"
+        GameAudio.PlaySfx("audio/sfx/sfx_choice_open.mp3")
         RenderChoice()
     else
         Finish(nil)
@@ -169,6 +178,7 @@ function RenderChoice()
                 marginTop = 8,
                 onClick = function()
                     if s.locked then return end
+                    GameAudio.PlaySfx("audio/sfx/sfx_ui_click.mp3")
                     s.locked = true              -- 选项锁定：防连点双加（《21》§5）
                     for _, b in ipairs(buttons) do
                         b:SetDisabled(true)

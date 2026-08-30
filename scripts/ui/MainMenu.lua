@@ -9,6 +9,7 @@ local PlayerData = require "config.PlayerData"
 local FlowController = require "flow.FlowController"
 local MediaPlayer = require "media.MediaPlayer"
 local EndingScreen = require "ui.EndingScreen"
+local GameAudio = require "audio.GameAudio"
 
 local MainMenu = {}
 
@@ -111,14 +112,20 @@ function MainMenu.Create(uiRoot)
         variant = "primary",
         width = "100%",
         height = 50,
-        onClick = function() doStart() end,
+        onClick = function()
+            GameAudio.PlaySfx("audio/sfx/sfx_ui_confirm.mp3")
+            doStart()
+        end,
     })
     continueBtn_ = UI.Button {
         text = "继续游戏",
         variant = "secondary",
         width = "100%",
         height = 50,
-        onClick = function() doContinue() end,
+        onClick = function()
+            GameAudio.PlaySfx("audio/sfx/sfx_ui_confirm.mp3")
+            doContinue()
+        end,
     }
     card:AddChild(continueBtn_)
     root_:AddChild(card)

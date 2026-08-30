@@ -79,6 +79,7 @@
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
+- 2026-08-30 **配音/章节卡/音效接入（本会话）**：`GameAudio` 统一配音+音效+环境音；`VoiceMap` 按 linesKey 第 1 行播长配音（后续行不打断）；`DialogueUI` 翻页 `sfx_ui_page`、三选 `sfx_choice_open`、点选项 `sfx_ui_click`。`ChapterCard` 切章展示 1.8s（ch0 楔子/ch1 春信/ch2 洛水阴/ch3 记忆印/ch4 尾声）；读档不重弹。MediaPlayer 断点三选/信念+1、EndingScreen 浮现音、主菜单确认音。关掉 `DEBUG_LIFEPLATE`。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。
 - 2026-08-30 **素材 Phase 4：配音/音效/章节卡/立绘产出（本会话，未接入玩法）**：四角色音色已确认（无幽1/素女3/老人2/旁白1）。配音 26 条落 `assets/audio/voice/`；环境+UI 音效 13 条落 `assets/audio/sfx/`；七张章回卡落 `assets/image/章节卡/`；定妆与三场景概念图落 `assets/image/立绘/`。清单见 `docs/Phase4-素材清单.md`。无面鬼不配音，画外心声走旁白。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。⚠️ DialogueUI/章节卡/音效触发另出任务。
 - 2026-08-30 **素材 Phase 3：S5 无面鬼初见正式视频接入（本会话）**：Seedance 2.0 / 15s / 9:16 / 720p / 有声，无面鬼定妆参考。落盘 `video/剧情/S5_无面鬼初见.mp4`。画面：蜷坐饮泉、空白脸无五官、泪痕、眼窝微光后黯淡；无口型。P21 仍 `at=-1/auto`，播完进 P22 三选。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。⚠️ 真机：P21 播 S5 → P22 递水/陪坐/唤名。
 - 2026-08-30 **素材 Phase 2：S1 开场 + S2/S3/S4 回忆正式视频接入（本会话）**：Seedance 2.0 / 15s / 9:16 / 720p / 有声。落盘 `video/剧情/S1_开场.mp4`、`S2_离别.mp4`、`S3_十二载.mp4`、`S4_一夜飘零.mp4`。`VIDEO_SOURCES` S1–S4 替换占位；P01 与 P04–P06 讲述段仍 `at=-1/auto`（先播视频再对白）。S5 仍占位。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。⚠️ 真机：P01 开场 → P02；P04–P06 先回忆视频再讲述。
