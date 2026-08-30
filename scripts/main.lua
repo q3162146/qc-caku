@@ -30,7 +30,6 @@ local EndingScreen = require "ui.EndingScreen"
 local ChapterCard = require "ui.ChapterCard"
 local GameAudio = require "audio.GameAudio"
 local MediaPlayer = require "media.MediaPlayer"
-local VideoSpike = require "experiments.VideoSpike"
 local UI = require "urhox-libs/UI"
 
 ---@type Scene|nil
@@ -208,7 +207,7 @@ function Start()
 
     print("=== 启动完成 ===")
     print("操作：WASD/方向键 移动 | 鼠标 视角 | 空格 跳跃 | 竖屏 9:16 纵深布局")
-    print("调试快捷键仍保留（画面无按钮）：F5 完成 | F6 Spike | F7 断点 | F8 保存 | F9 读档 | F10 S6链 | F2/F3/F4 场景 | ESC 退出")
+    print("调试快捷键仍保留（画面无按钮）：F5 完成 | F7 断点 | F8 保存 | F9 读档 | F10 S6链 | F2/F3/F4 场景 | ESC 退出")
 end
 
 function Stop()
@@ -224,14 +223,9 @@ end
 function HandleUpdate(eventType, eventData)
     local timeStep = eventData["TimeStep"]:GetFloat()
 
-    -- 正式剧情视频：Widget 自身负责解码与回调，主循环负责会话冻结自愈
+    -- 正式剧情视频：Widget 自身负责解码与回调，主循环负责会话冻结自愈。
     if MediaPlayer.IsPlaying() then
         MediaPlayer.Update(timeStep)
-    end
-
-    -- 视频生命周期 Spike（实验模块）：激活时每帧驱动其计时器/状态机
-    if VideoSpike.IsActive() then
-        VideoSpike.Update(timeStep)
     end
 
     -- 对话/菜单打开时：只处理对应输入，玩家停移动（防串台）
@@ -249,11 +243,7 @@ function HandleUpdate(eventType, eventData)
         PlayerController.Update(timeStep)
     end
 
-    -- 调试快捷键
-    if InputManager.IsKeyPress(KEY_F6) then
-        print("[main] 调试：视频生命周期 Spike")
-        VideoSpike.Toggle()
-    end
+    -- 调试快捷键（画面无按钮；真机无键盘无影响）
     if InputManager.IsKeyPress(KEY_F7) then
         print("[main] 调试：视频断点测试 Hook")
         MediaPlayer.ToggleBreakpointTest()

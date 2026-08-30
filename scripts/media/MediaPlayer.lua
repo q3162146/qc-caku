@@ -1,9 +1,9 @@
 -- ============================================================================
 -- media/MediaPlayer.lua
--- S6 正式剧情视频媒体会话
+-- 正式剧情视频媒体会话
 --
--- 说明：当前项目尚无正式 S1~S13 剧情视频，VIDEO_SOURCES 暂以 S1 Spike
--- 测试素材占位。测试素材与正式素材在内容上不同，正式资产到位后只需替换映射。
+-- VIDEO_SOURCES 仅保留主链实际引用：S1~S5、S6-1..5、S7/S8/S9。
+-- 未用占位键 S6/S10~S13 与 Spike 测试片已移除，避免全量引用打进发布包。
 --
 -- 状态：CREATING → READY/SEEK_READ → PLAY → PAUSED_AT_BREAKPOINT → ENDED
 -- 读档恢复：就绪 → Seek → 两次时间确认 → 移除遮罩
@@ -32,14 +32,9 @@ local VIDEO_SOURCES = {
     S3 = "video/剧情/S3_十二载.mp4",
     S4 = "video/剧情/S4_一夜飘零.mp4",
     S5 = "video/剧情/S5_无面鬼初见.mp4",
-    S6 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S7 = "video/剧情/S7_圆满.mp4",
     S8 = "video/剧情/S8_放手.mp4",
     S9 = "video/剧情/S9_传说.mp4",
-    S10 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S11 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S12 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S13 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     -- S6 记忆印证 5 段（ch3/P32~P36）：Phase 1 正式素材（15s / 9:16 / 720p）
     ["S6-1"] = "video/剧情/S6-1_礼.mp4",
     ["S6-2"] = "video/剧情/S6-2_乐.mp4",

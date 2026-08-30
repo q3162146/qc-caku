@@ -5,8 +5,8 @@
 # 项目记忆索引
 
 项目：桃素洛无幽·素女篇
-当前版本：v0.3.6-qa（真机验收遗留 3 项）
-简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；主链 P01→P99 + 正式视频/配音/章节卡/音效已接线。本轮修：P99 不弹章节卡、P11 只计五行花（fire 可拾取）、清掉调试 HUD 按钮/RunJump。真机复验仍待补。
+当前版本：v0.3.7-ship（发布前低风险清理）
+简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；主链 P01→P99 + 正式视频/配音/章节卡/音效已接线。本轮：删 VIDEO_SOURCES 未用占位键、移除 Spike 入口并把测试片/CGT 中间产物移出 assets。真机整链回归仍待补。
 最后巩固：2026-08-30
 
 ## 项目概况
@@ -75,12 +75,13 @@
 - 验证环境可能缺 shader/audio/默认字体；先看 Lua 错误、场景统计和截图。
 - 视频用 `Video.VideoPlayer` Widget（urhox-libs/Video），禁止裸搓 C++ + NanoVG；竖屏素材须显式设 `textureWidth/Height=1080×1920`（指南默认横屏）。
 - `ClearChildren()` 不释放视频资源，必须对每个 VideoPlayer 显式 `Destroy()`（配合 orphan 检测）。
-- Spike 的 `F6` 触发与 `scripts/experiments/VideoSpike.lua` 是调试/实验代码，**S9 发布前必须移除**。
+- Spike 实验已封存到 `_dev/video_spike/` + `_dev/spike_videos/`，发布入口已移除；不要再把测试片放回 `assets/`。
 - **对话/叠加 UI 禁止 `UI.SetRoot`**：`SetRoot` 会整棵替换 HUD 根，章节卡/主菜单/存档菜单会从树上消失。对话层必须 `AddChild` 到持久 HUD 根。视频恢复 HUD 时 `destroyOld` 必须为 false。
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
-- 2026-08-30 **真机验收遗留 3 项（本会话）**：① `EnterParagraph` 对 `p.type=="end"` 跳过章节卡（P43/44/45→P99 不再闪 ch1「收集·朝阳之谷」）；② P11 只认 `hotspots` 五行花、按 `blossoms` 去重计数，忽略 `Int_oldman`；fire 移到 `(4.5,0.6,-6)` 主路东侧，拾取半径 1.1→1.6。③ 去掉 Spike/断点/S6链/完成/保存/读档触屏按钮、场景横幅、SaveMenu 常驻入口、GameHUD Run/Jump；保留移动摇杆+滑动视角（真机探索必需）与主菜单开始/继续。LSP 0 Error、官方构建成功。⚠️ 真机复验：P99 前不弹章卡、5 朵=5 独白含 fire、调试 HUD 已清。
+- 2026-08-31 **发布前低风险清理（本会话）**：`VIDEO_SOURCES` 删除未引用 `S6/S10~S13`（主链只用 `S6-1..5` + `S7/S8/S9`）；`main.lua` 去掉 `VideoSpike`/`F6`；Spike 模块与三档测试片、CGT 中间产物、章节卡源图、剧情尾帧移出 `assets/`/`scripts/` 到 `_dev/`（全量 `**` 引用不再打进包）。竖屏 `SetOrientations("Portrait")` + `taptap_publish.screen_orientation=portrait` 仍在。主链视频/配音/音效/章节卡路径字面量均存在。F5/F7–F10/F2–F4 键盘调试键保留（画面无按钮）。LSP / 官方构建见本轮结果。⚠️ 真机整链与三轴结局仍待补；增强引用（`scripts/**`）未切，需用户确认。
+- 2026-08-30 **真机验收遗留 3 项**：① `EnterParagraph` 对 `p.type=="end"` 跳过章节卡（P43/44/45→P99 不再闪 ch1「收集·朝阳之谷」）；② P11 只认 `hotspots` 五行花、按 `blossoms` 去重计数，忽略 `Int_oldman`；fire 移到 `(4.5,0.6,-6)` 主路东侧，拾取半径 1.1→1.6。③ 去掉 Spike/断点/S6链/完成/保存/读档触屏按钮、场景横幅、SaveMenu 常驻入口、GameHUD Run/Jump；保留移动摇杆+滑动视角（真机探索必需）与主菜单开始/继续。LSP 0 Error、官方构建成功。⚠️ 真机复验：P99 前不弹章卡、5 朵=5 独白含 fire、调试 HUD 已清。
 - 2026-08-30 **整条主链正式素材验收修补**：静态主链 P01→P99 与 S1–S9 / 配音 / 音效 / 章节卡全部对上。修 4 处阻断：① `DialogueUI` 不再 `UI.SetRoot`（改挂 HUD 叠层，章节卡/主菜单不被冲掉）；② P11 五行独白补 `linesKey`（`sunu_blossom_*` 可播）；③ 章节卡文案对齐清单；④ `MediaPlayer.Play` 失败自动通过。P03 `choiceOrder` 固定重逢/放手/传说；视频恢复 HUD 时 `destroyOld=false`。LSP 0 Error、官方构建成功、启动 `lua_errors=0`。
 - 2026-08-30 **配音/章节卡/音效接入（本会话）**：`GameAudio` 统一配音+音效+环境音；`VoiceMap` 按 linesKey 第 1 行播长配音（后续行不打断）；`DialogueUI` 翻页 `sfx_ui_page`、三选 `sfx_choice_open`、点选项 `sfx_ui_click`。`ChapterCard` 切章展示 1.8s（ch0 楔子/ch1 春信/ch2 洛水阴/ch3 记忆印/ch4 尾声）；读档不重弹。MediaPlayer 断点三选/信念+1、EndingScreen 浮现音、主菜单确认音。关掉 `DEBUG_LIFEPLATE`。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。
 - 2026-08-30 **素材 Phase 4：配音/音效/章节卡/立绘产出（本会话，未接入玩法）**：四角色音色已确认（无幽1/素女3/老人2/旁白1）。配音 26 条落 `assets/audio/voice/`；环境+UI 音效 13 条落 `assets/audio/sfx/`；七张章回卡落 `assets/image/章节卡/`；定妆与三场景概念图落 `assets/image/立绘/`。清单见 `docs/Phase4-素材清单.md`。无面鬼不配音，画外心声走旁白。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。⚠️ DialogueUI/章节卡/音效触发另出任务。
@@ -135,12 +136,12 @@
 - v0.1.0：创建单机白模骨架，完成三场景、PlayerData、Chapters、Flow、移动相机与基础碰撞。
 
 ## 下一步
-0. **当前最优先：真机复验 v0.3.6-qa 三项**。① P43/44/45→P99 前不再弹 ch1 章卡；② P11 fire 独白 + 5 朵=5 独白；③ 画面无 Spike/断点/S6链/完成/保存/读档/场景横幅/菜单入口/RunJump（底部仅移动摇杆）。然后再跑整条主链与三轴结局。本环境无解码器、无真机通道，不能伪报通过。
+0. **当前最优先：真机最终回归（发布前）**。完整主链 P01→P99、三结局各一次、存读档「继续游戏」、章节卡/配音/音效/三选锁定。本环境无解码器、无真机通道，不能伪报通过。
 1. **同步管道已就绪（2026-08-25）**：S6 代码已合入并推权威仓。TTM `git push github main`，本机 `git fetch github && git rebase github/main`。PAT 值只在 TTM 环境，**不进对话**。
 1. **S6 媒体模块（主要闭环已完成）**：MediaPlayer 状态机 + 断点 Hook（DEBUG_BREAKPOINT_TEST @4.0 三选）+ 冻结自愈 + mediaPos 断点续写/断点不重复/强制 ENDED/显式释放，真机两轮（21:53、22:21 break2.log）全链路 ✅。**剩余验证（代码已备好，待真机/WASM 回归）**：S6 连续 5 段（ch3/P32~P36 已接线，F10 直切，S6-x 占位素材）、完整读档恢复（磁盘 Save/Load(slot1) + 启动自动续档 + F8/F9）、后台冻结自愈（22:21 顺带验证恢复续播）。回归项见素材包/`TTM-S6回归粘贴块-读档与5段.md`。
   - **2026-08-26 更新**：真机 `break2.log`（08-25 22:21）在断点三选命中 `media/MediaPlayer:140 Attempt to call a non-callable object (global 'log')`，已修复并推 `github`（`0871bfe`）；TTM 已同步/官方构建/本地 140 帧 0 错、B 项接线静态 ✅。**真机视频播放+点击仍未跑**（TTM 环境无解码器 `ERROR_NO_DECODER`）→ 仍需真机补测：断点三选点击（确认崩溃消失）+ A 项读档恢复。
   - **2026-08-26 更更进一步**：已加真机触屏调试按钮（`171068a`）解决手机按不了 F 键；真机 `break.log`（02:10）用触屏按钮**全链路通过**——B 项 P31→P36 五段三选正常（`显示三选`，崩溃消失）+ 信念+1 + Destroy=0 + `找不到下一段 P41`；A 项启动自动续档到 P02 + 视频中段恢复降级（上轮已验证）。✅ **S6 剩余验证闭环**。
-2. **正式素材**：S1~S13 仍为测试占位（`S1_test_mid`），S6-x 亦占位；正式素材到位后仅替换 `scripts/media/MediaPlayer.lua` 的 `VIDEO_SOURCES` 映射 + 按《21》§5 校正断点 `at`。
-3. **S9 前移除（触屏按钮已清）**：画面调试按钮/场景横幅/SaveMenu 入口/RunJump 已在 v0.3.6-qa 去掉。键盘 F5–F10/F2–F4 仍在（PC 调试用）。Spike 模块 `scripts/experiments/VideoSpike.lua` 仍可 F6 触发，发布前可整文件移除。正式接入建议同屏 ≤2；未来顶部 HUD 需重评 SafeAreaView `nativeMenuInset=true`。
+2. **正式素材已接入**：`VIDEO_SOURCES` 仅 S1~S5 / S6-1..5 / S7~S9 正式剧情片；未用占位键与 Spike 测试片已移出。S6 断点 `at=8.5` 仍建议真机看片再校。
+3. **S9 前清理（已完成）**：触屏调试按钮/场景横幅/SaveMenu 入口/RunJump/Spike 入口已清。键盘 F5/F7–F10/F2–F4 仍在（PC 调试用，真机无键盘无影响）。正式接入建议同屏 ≤2；未来顶部 HUD 需重评 SafeAreaView `nativeMenuInset=true`。上架材料（图标/截图/简介/隐私）走平台侧，不在本代码库。
 4. **后续主线（下一阶段）**：~~P02 真实老人交互~~（**已完成，见 v0.1.6-S2**）、~~媒体断点存档~~（**档案落盘已接入 v0.1.7，存档 UI/菜单待做**）、~~ch2（洛水阴山）/ch4（终局）接线~~（**已完成，见 `5943f2c`，待真机回归整条链 + 正式 S5/S7/S8/S9 素材**）、~~P11 五朵桃花收集 vs `Int_*` 交互~~（**已完成，见 `060a8d8`：hotspots 对齐五行标记 + 拾取触发独白/札记**）、正式结局/菜单建好前 P99 仍作演示闭环；真机回归整条主链（P01→…→ch2→ch3→ch4→结局）。✅ **手机触屏移动+视角（GameHUD 摇杆+触摸视角）已接入（`6819499`）**，待真机验证（摇杆移动/触摸视角/跳跃/对话期锁移动/无双摇杆）后 P02/P11 采集段应可自然完成。
 5. 同步规则：`git fetch github && git rebase github/main`；推送走 `git push github main`（**勿用** Maker 仓 origin 的 GitHub 凭据；推送前 `git status` 不带 `.tmp/.scratch/.adb-tools/logs/s1_test` 等垃圾）。git 已可用（`/usr/bin/git`）。
