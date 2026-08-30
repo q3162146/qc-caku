@@ -5,6 +5,7 @@
 -- 规则（快速开工包 ④ 第 2 条）：常规 UI 一律用 urhox-libs/UI，不混用 raw NanoVG。
 -- 选项锁定（《21》§5）：选中后立即锁，防连点双加。
 -- 本模块只做表现与输入收集；选择/推进后的数据变化由调用方（FlowController）处理。
+-- 叠层：对话层挂到持久 HUD 根上，禁止 UI.SetRoot，避免冲掉章节卡/主菜单/存档菜单。
 -- ============================================================================
 
 local UI = require "urhox-libs/UI"
@@ -18,6 +19,40 @@ local DialogueUI = {}
 local open_ = false
 ---@type table|nil
 local state_ = nil   -- { spec, phase, lineIndex, locked, onDone, onChoose }
+---@type Panel|nil
+local layer_ = nil   -- 持久对话层（挂在 HUD 根上，Show/Hide 只改可见与子节点）
+
+---@return Widget|nil
+local function hudRoot()
+    return UI.GetRoot()
+end
+
+local function ensureLayer()
+    if layer_ ~= nil then return layer_ end
+    local root = hudRoot()
+    if root == nil then return nil end
+    layer_ = UI.Panel {
+        id = "dialogueLayer",
+        position = "absolute",
+        top = 0, left = 0, right = 0, bottom = 0,
+        pointerEvents = "box-none",
+        zIndex = 90,
+        visible = false,
+    }
+    root:AddChild(layer_)
+    return layer_
+end
+
+local function mountPanel(panel)
+    local layer = ensureLayer()
+    if layer == nil then
+        print("[DialogueUI] 对话层挂载失败：HUD 根不存在")
+        return
+    end
+    layer:ClearChildren()
+    layer:AddChild(panel)
+    layer:SetVisible(true)
+end
 
 --- 对话是否打开（主循环据此停玩家移动）
 ---@return boolean
@@ -25,11 +60,14 @@ function DialogueUI.IsOpen()
     return open_
 end
 
---- 关闭对话（清空 UI 根）
+--- 关闭对话（只隐藏对话层，不替换 UI 根）
 function DialogueUI.Hide()
     if not open_ then return end
     GameAudio.StopVoice()
-    UI.SetRoot(UI.Panel { width = "100%", height = "100%", pointerEvents = "box-none" })
+    if layer_ ~= nil then
+        layer_:ClearChildren()
+        layer_:SetVisible(false)
+    end
     open_ = false
     state_ = nil
 end
@@ -87,7 +125,7 @@ function RenderText()
         GameAudio.PlayVoice(voice)
     end
 
-    UI.SetRoot(UI.Panel {
+    mountPanel(UI.Panel {
         position = "absolute",
         bottom = 0, left = 0, right = 0,
         padding = { 18, 22 },
@@ -191,7 +229,7 @@ function RenderChoice()
         end
     end
 
-    UI.SetRoot(UI.Panel {
+    mountPanel(UI.Panel {
         position = "absolute",
         bottom = 0, left = 0, right = 0,
         padding = { 18, 22 },

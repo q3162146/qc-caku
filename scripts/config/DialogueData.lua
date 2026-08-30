@@ -36,6 +36,7 @@ local Data = {
             release = "我信放手——等待终会结束",
             legend = "我信传说——故事会一直讲下去",
         },
+        choiceOrder = { "reunion", "release", "legend" },
         -- 开场三选不计信念值（effect = "no_belief"，见《05》§8）；选择写入 flags.open_choice，
         -- 结局后对照回放（见《02》剧本）。
     },

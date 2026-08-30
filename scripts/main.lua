@@ -1,13 +1,6 @@
--- 【实验】发布素女篇前必须改为 false 或删除本段
--- 改为 false 后：不 require lifeplate，素女篇原入口正常、无命盘残留加载。
--- 销毁方式：删 scripts/lifeplate/ + assets/textures/lifeplate/ + assets/audio/lifeplate/
-local DEBUG_LIFEPLATE = true
-if DEBUG_LIFEPLATE then
-    return require("lifeplate.lp_main").run()
-end
-
 -- ============================================================================
 -- main.lua ——《桃素洛无幽·素女篇》唯一业务入口
+-- 实验模块已封存到 _dev/（见该目录 README）；本文件走素女篇原 Start()。
 --
 -- 职责（快速开工包 ④）：
 --   1. 启动时读取 .project/settings.json，校验 multiplayer.enabled == false

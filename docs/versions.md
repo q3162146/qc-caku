@@ -5,6 +5,7 @@
 
 | 版本 | 日期 | 变更摘要 |
 |------|------|---------|
+| v0.3.5-qa | 2026-08-30 | 整条主链正式素材验收修补：DialogueUI 不再 SetRoot 冲掉 HUD；P11 独白补 linesKey；章节卡对齐清单；视频失败自动通过；P03 三选顺序固定。LSP 0 Error、官方构建成功、启动 lua_errors=0。真机整链/信念三轴/全程录屏仍待补 |
 | v0.3.4-audio | 2026-08-30 | 配音/章节卡/音效接入：DialogueUI 逐段配音、切章 ChapterCard、三选/信念/结局卡/UI 音效。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |
 | v0.3.3-media4 | 2026-08-30 | Phase 4 素材产出（未接入玩法）：26 条配音、13 条音效、7 张章节卡、立绘/场景图落盘。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |
 | v0.3.2-media3 | 2026-08-30 | Phase 3 正式视频：S5 无面鬼初见（15s/9:16/720p）替换 VIDEO_SOURCES 占位；P21 at=-1。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |

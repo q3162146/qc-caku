@@ -234,7 +234,8 @@ local function restoreRoot()
         videoRoot_ = nil
     end
     if savedRoot_ ~= nil then
-        UI.SetRoot(savedRoot_, true)
+        -- 恢复 HUD 根时不要 Destroy：savedRoot 是持久 HUD（章节卡/主菜单/存档菜单）
+        UI.SetRoot(savedRoot_, false)
     else
         UI.SetRoot(UI.Panel {
             width = "100%",

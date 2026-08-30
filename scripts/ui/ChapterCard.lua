@@ -10,11 +10,11 @@ local ChapterCard = {}
 
 local CARDS = {
     ch0 = { image = "image/章节卡/ch0_桃花谷口.png", title = "楔子 · 桃花谷口", seal = "木" },
-    ch1 = { image = "image/章节卡/ch1_春信至.png", title = "第一回 · 春信至，药师别妻", seal = "火" },
+    ch1 = { image = "image/章节卡/ch1_春信至.png", title = "收集 · 朝阳之谷", seal = "火" },
     ch2 = { image = "image/章节卡/ch4_洛水阴.png", title = "第四回 · 洛水阴，无面泪", seal = "水" },
-    -- 运行时章节 id：ch2=洛水阴，ch3=记忆印，ch4=尾声（一夜飘零卡留给讲述段视觉，不单独切章）
-    ch3 = { image = "image/章节卡/ch5_记忆印.png", title = "第五回 · 记忆印，六艺寻", seal = "欲知后事如何" },
-    ch4 = { image = "image/章节卡/ch6_无涕桃.png", title = "尾声 · 无涕桃，人面何处", seal = "人面不知何处去" },
+    -- 运行时章节 id：ch2=洛水阴，ch3=记忆印，ch4=尾声（ch2_十二载 / ch3_一夜飘零 不单独切章）
+    ch3 = { image = "image/章节卡/ch5_记忆印.png", title = "第五回 · 记忆印，六艺寻", seal = "金" },
+    ch4 = { image = "image/章节卡/ch6_无涕桃.png", title = "尾声 · 无涕桃，人面何处", seal = "人面不知何处去，桃花依旧笑春风" },
 }
 
 ---@type Panel|nil

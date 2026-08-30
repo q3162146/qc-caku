@@ -54,6 +54,7 @@ local Chapters = {
                     release = "我信放手",
                     legend = "我信传说",
                 },
+                choiceOrder = { "reunion", "release", "legend" },
                 effect = "no_belief",
                 next = "P04",
             },

@@ -162,13 +162,20 @@ function EnterParagraph()
     PlayerController.SetPickupsEnabled(p.type == "explore")
     if p.type == "video" then
         print("[Flow] 视频段落 " .. (p.video or "?") .. " → MediaPlayer")
-        MediaPlayer.Play(p, data_)
+        if not MediaPlayer.Play(p, data_) then
+            print("[Flow] 视频无法播放，自动通过 " .. p.id)
+            CompleteParagraph({ done = true })
+        end
     elseif p.type == "dialogue" and p.video then
         -- 讲述段(对话+回忆视频，P04~P06)：先播回忆视频，播完再讲该段对白
         pendingDialogueAfterVideo_ = p
         print("[Flow] 讲述段 " .. p.id .. " 先播回忆视频 " .. tostring(p.video))
-        MediaPlayer.Play({ id = p.id, type = "video", video = p.video,
-            breakpoints = { { at = -1, act = "auto" } } }, data_)
+        if not MediaPlayer.Play({ id = p.id, type = "video", video = p.video,
+            breakpoints = { { at = -1, act = "auto" } } }, data_) then
+            print("[Flow] 回忆视频无法播放，直接进入讲述 " .. p.id)
+            pendingDialogueAfterVideo_ = nil
+            StartDialogueParagraph(p)
+        end
     elseif p.type == "dialogue" or p.type == "choice" then
         StartDialogueParagraph(p)
     elseif p.type == "explore" then
@@ -223,7 +230,7 @@ function StartDialogueParagraph(p)
         lines = spec.lines,
         prompt = spec.prompt,
         choices = spec.choices,
-        choiceOrder = spec.choiceOrder,
+        choiceOrder = spec.choiceOrder or p.choiceOrder,
         linesKey = p.lines,
     }
 
@@ -321,7 +328,12 @@ function FlowController.OnBlossomCollected(key, node)
     if monoKey ~= nil then
         local spec = DialogueData.Get(monoKey)
         if spec ~= nil then
-            local dlg = { npc = spec.npc, lines = spec.lines, onDone = finish }
+            local dlg = {
+                npc = spec.npc,
+                lines = spec.lines,
+                linesKey = monoKey,
+                onDone = finish,
+            }
             print("[Flow] 拾取独白 " .. key .. "（" .. tostring(monoKey) .. "）")
             DialogueUI.ShowDialogue(dlg)
             return

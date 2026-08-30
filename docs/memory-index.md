@@ -5,9 +5,9 @@
 # 项目记忆索引
 
 项目：桃素洛无幽·素女篇
-当前版本：v0.2.0-GameHUD（触屏摇杆+触摸视角接入）
-简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；已完成单机 3D 白模骨架、S1 竖屏 9:16 布局调整，S1 真机复盘 R1~R12 全部 ✅；B｜视频生命周期 Spike 代码完成（运行期待真机/WASM 验证）。
-最后巩固：2026-08-22
+当前版本：v0.3.5-qa（整条主链正式素材验收修补）
+简述：TapTap 制造 × Seedance 主题赛单机叙事游戏；主链 P01→P99 + 正式视频/配音/章节卡/音效已接线。本轮修了对话 SetRoot 冲 HUD、P11 独白无配音、章节卡文案、无解码器卡段。真机整链/三轴结局/全程录屏仍待补。
+最后巩固：2026-08-30
 
 ## 项目概况
 - UrhoX Lua 单机项目，唯一入口 `scripts/main.lua`。
@@ -76,9 +76,11 @@
 - 视频用 `Video.VideoPlayer` Widget（urhox-libs/Video），禁止裸搓 C++ + NanoVG；竖屏素材须显式设 `textureWidth/Height=1080×1920`（指南默认横屏）。
 - `ClearChildren()` 不释放视频资源，必须对每个 VideoPlayer 显式 `Destroy()`（配合 orphan 检测）。
 - Spike 的 `F6` 触发与 `scripts/experiments/VideoSpike.lua` 是调试/实验代码，**S9 发布前必须移除**。
+- **对话/叠加 UI 禁止 `UI.SetRoot`**：`SetRoot` 会整棵替换 HUD 根，章节卡/主菜单/存档菜单会从树上消失。对话层必须 `AddChild` 到持久 HUD 根。视频恢复 HUD 时 `destroyOld` 必须为 false。
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
+- 2026-08-30 **整条主链正式素材验收修补（本会话）**：静态主链 P01→P99 与 S1–S9 / 配音 / 音效 / 章节卡全部对上。修 4 处阻断：① `DialogueUI` 不再 `UI.SetRoot`（改挂 HUD 叠层，章节卡/主菜单/存档菜单不被冲掉）；② P11 五行独白补 `linesKey`（`sunu_blossom_*` 可播）；③ 章节卡文案对齐清单（ch1「收集·朝阳之谷」印章火 / ch3 印章金 / ch4 题跋）；④ `MediaPlayer.Play` 失败自动通过，无解码器环境不卡段。另：P03 `choiceOrder` 固定重逢/放手/传说；视频恢复 HUD 时 `destroyOld=false`。LSP 0 Error、官方构建成功、启动 `lua_errors=0`。⚠️ 真机整链/三轴结局/全程录屏/关键截图仍待补（本环境无解码器、无真机通道）。
 - 2026-08-30 **配音/章节卡/音效接入（本会话）**：`GameAudio` 统一配音+音效+环境音；`VoiceMap` 按 linesKey 第 1 行播长配音（后续行不打断）；`DialogueUI` 翻页 `sfx_ui_page`、三选 `sfx_choice_open`、点选项 `sfx_ui_click`。`ChapterCard` 切章展示 1.8s（ch0 楔子/ch1 春信/ch2 洛水阴/ch3 记忆印/ch4 尾声）；读档不重弹。MediaPlayer 断点三选/信念+1、EndingScreen 浮现音、主菜单确认音。关掉 `DEBUG_LIFEPLATE`。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。
 - 2026-08-30 **素材 Phase 4：配音/音效/章节卡/立绘产出（本会话，未接入玩法）**：四角色音色已确认（无幽1/素女3/老人2/旁白1）。配音 26 条落 `assets/audio/voice/`；环境+UI 音效 13 条落 `assets/audio/sfx/`；七张章回卡落 `assets/image/章节卡/`；定妆与三场景概念图落 `assets/image/立绘/`。清单见 `docs/Phase4-素材清单.md`。无面鬼不配音，画外心声走旁白。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。⚠️ DialogueUI/章节卡/音效触发另出任务。
 - 2026-08-30 **素材 Phase 3：S5 无面鬼初见正式视频接入（本会话）**：Seedance 2.0 / 15s / 9:16 / 720p / 有声，无面鬼定妆参考。落盘 `video/剧情/S5_无面鬼初见.mp4`。画面：蜷坐饮泉、空白脸无五官、泪痕、眼窝微光后黯淡；无口型。P21 仍 `at=-1/auto`，播完进 P22 三选。LSP 0 Error、官方构建成功、140 帧 lua_errors=0。⚠️ 真机：P21 播 S5 → P22 递水/陪坐/唤名。
@@ -132,7 +134,8 @@
 - v0.1.0：创建单机白模骨架，完成三场景、PlayerData、Chapters、Flow、移动相机与基础碰撞。
 
 ## 下一步
-0. **同步管道已就绪（2026-08-25）**：S6 代码已合入并推权威仓（提交 `5d0c95b`）+ 文档整理（`ccb62c7`）。TTM 无 GitHub 账号/无 SSH，已用 **repo 级 fine-grained PAT + `credential.helper store`** 打通直推：此后 TTM `git push github main`，本机 `git fetch github && git rebase github/main` 即同步（不再打 zip/手动合并）；降级用 `git format-patch`。PAT 值只在 TTM 环境，**不进对话**。现行接入说明=素材包/`TTM-共用仓库直推接入说明-方案B凭据.md`；降级=素材包/`TTM-零凭据patch交接.md`；历史接头草稿归档在素材包/`历史交接草稿-勿用/`。
+0. **当前最优先：真机整条主链验收（正式素材）**。静态链与修补已齐（v0.3.5-qa）。待真机：P01→P99 逐段、三轴信念各出对应结局卡、全程录屏、关键截图（章节卡/结局卡/六艺断点）。本环境无解码器、无真机通道，不能伪报通过。
+1. **同步管道已就绪（2026-08-25）**：S6 代码已合入并推权威仓。TTM `git push github main`，本机 `git fetch github && git rebase github/main`。PAT 值只在 TTM 环境，**不进对话**。
 1. **S6 媒体模块（主要闭环已完成）**：MediaPlayer 状态机 + 断点 Hook（DEBUG_BREAKPOINT_TEST @4.0 三选）+ 冻结自愈 + mediaPos 断点续写/断点不重复/强制 ENDED/显式释放，真机两轮（21:53、22:21 break2.log）全链路 ✅。**剩余验证（代码已备好，待真机/WASM 回归）**：S6 连续 5 段（ch3/P32~P36 已接线，F10 直切，S6-x 占位素材）、完整读档恢复（磁盘 Save/Load(slot1) + 启动自动续档 + F8/F9）、后台冻结自愈（22:21 顺带验证恢复续播）。回归项见素材包/`TTM-S6回归粘贴块-读档与5段.md`。
   - **2026-08-26 更新**：真机 `break2.log`（08-25 22:21）在断点三选命中 `media/MediaPlayer:140 Attempt to call a non-callable object (global 'log')`，已修复并推 `github`（`0871bfe`）；TTM 已同步/官方构建/本地 140 帧 0 错、B 项接线静态 ✅。**真机视频播放+点击仍未跑**（TTM 环境无解码器 `ERROR_NO_DECODER`）→ 仍需真机补测：断点三选点击（确认崩溃消失）+ A 项读档恢复。
   - **2026-08-26 更更进一步**：已加真机触屏调试按钮（`171068a`）解决手机按不了 F 键；真机 `break.log`（02:10）用触屏按钮**全链路通过**——B 项 P31→P36 五段三选正常（`显示三选`，崩溃消失）+ 信念+1 + Destroy=0 + `找不到下一段 P41`；A 项启动自动续档到 P02 + 视频中段恢复降级（上轮已验证）。✅ **S6 剩余验证闭环**。
