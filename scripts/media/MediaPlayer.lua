@@ -25,11 +25,11 @@ local function log(message)
 end
 
 local VIDEO_SOURCES = {
-    -- 临时占位：正式 S1~S13 到位后逐项替换为对应剧情视频。
-    S1 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S2 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S3 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
-    S4 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
+    -- Phase 2：S1 开场 + S2/S3/S4 回忆（15s / 9:16 / 720p）
+    S1 = "video/剧情/S1_开场.mp4",
+    S2 = "video/剧情/S2_离别.mp4",
+    S3 = "video/剧情/S3_十二载.mp4",
+    S4 = "video/剧情/S4_一夜飘零.mp4",
     S5 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S6 = "video/短视频生命周期 spike（推荐）/S1_test_mid_6Mbps.mp4",
     S7 = "video/剧情/S7_圆满.mp4",
