@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "provider": "elevenlabs",
+  "default_language": "cmn",
+  "default_stability": 0.5,
+  "characters": {
+    "无幽": {
+      "voice_id": "pWLzBd49fQR86MKAQ6i7",
+      "voice_name": "无幽_voice",
+      "description": "Voice Design - Young adult Chinese male in his mid-20s, warm magnetic mid-low timbre, slightly husky but clear, measured and deliberate pacing with quiet pauses, inwardly resolute and gentle rather than loud, professional Chinese voice actor for a historical drama, studio-quality recording, clear articulation.",
+      "language": "cmn",
+      "stability": 0.5,
+      "created_at": "2026-08-30T01:36:36.739Z",
+      "last_used": "2026-08-30T01:36:36.739Z"
+    },
+    "素女": {
+      "voice_id": "Sq4QNPsrA7XE9bMS76Sl",
+      "voice_name": "素女_voice",
+      "description": "Voice Design - Young adult Chinese female in her early 20s, clear warm slightly breathy timbre, slow and stubbornly gentle pacing, tender yet obstinate emotion, professional Chinese voice actor for a historical drama, studio-quality recording, clear articulation.",
+      "language": "cmn",
+      "stability": 0.5,
+      "created_at": "2026-08-30T01:37:31.158Z",
+      "last_used": "2026-08-30T01:37:31.158Z"
+    },
+    "守桃老人": {
+      "voice_id": "nhvBnrJtmJtrBFPThCaS",
+      "voice_name": "守桃老人_voice",
+      "description": "Voice Design - Elderly Chinese man in his 70s, deep gravelly storyteller voice, slow pacing with dramatic pauses, calm and wry, professional Chinese voice actor for a traditional pingshu narrator, studio-quality recording, clear articulation.",
+      "language": "cmn",
+      "stability": 0.5,
+      "created_at": "2026-08-30T01:37:34.677Z",
+      "last_used": "2026-08-30T01:37:34.677Z"
+    },
+    "旁白": {
+      "voice_id": "AFTv4sbIejQzUS841xTL",
+      "voice_name": "旁白_voice",
+      "description": "Voice Design - Adult Chinese narrator of unspecified gender, smooth rich mid timbre, steady measured pacing, calm mysterious storyteller vibe, professional Chinese voice actor for cinematic narration, studio-quality recording, clear articulation.",
+      "language": "cmn",
+      "stability": 0.5,
+      "created_at": "2026-08-30T01:37:37.656Z",
+      "last_used": "2026-08-30T01:37:37.656Z"
+    }
+  },
+  "special_voices": {}
+}

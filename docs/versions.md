@@ -5,6 +5,7 @@
 
 | 版本 | 日期 | 变更摘要 |
 |------|------|---------|
+| v0.3.3-media4 | 2026-08-30 | Phase 4 素材产出（未接入玩法）：26 条配音、13 条音效、7 张章节卡、立绘/场景图落盘。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |
 | v0.3.2-media3 | 2026-08-30 | Phase 3 正式视频：S5 无面鬼初见（15s/9:16/720p）替换 VIDEO_SOURCES 占位；P21 at=-1。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |
 | v0.3.1-media2 | 2026-08-30 | Phase 2 正式视频：S1 开场 + S2 离别 + S3 十二载 + S4 一夜飘零（15s/9:16/720p）替换 VIDEO_SOURCES 占位；P01/P04-P06 仍 at=-1。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |
 | v0.3.0-media1 | 2026-08-30 | Phase 1 正式视频：S6-1..5 记忆印证 + S7/S8/S9 三结局（15s/9:16/720p）替换 VIDEO_SOURCES 占位；P32-36 断点 at=8.5；P43-45 at=-1。LSP 0 Error、官方构建成功、140 帧 lua_errors=0 |
