@@ -1,11 +1,6 @@
 -- ============================================================================
 -- ui/DialogueUI.lua
--- 对话系统表现层（S2）：顺序对白 + 三选交互，统一用 urhox-libs/UI
---
--- 规则（快速开工包 ④ 第 2 条）：常规 UI 一律用 urhox-libs/UI，不混用 raw NanoVG。
--- 选项锁定（《21》§5）：选中后立即锁，防连点双加。
--- 本模块只做表现与输入收集；选择/推进后的数据变化由调用方（FlowController）处理。
--- 叠层：对话层挂到持久 HUD 根上，禁止 UI.SetRoot，避免冲掉章节卡/主菜单/存档菜单。
+-- 对话 + 三选：共用 StoryPanel 外壳；台词固定 2 行分页；三选右侧立绘。
 -- ============================================================================
 
 local UI = require "urhox-libs/UI"
@@ -13,15 +8,31 @@ local InputManager = require "game.InputManager"
 local GameAudio = require "audio.GameAudio"
 local VoiceMap = require "config.VoiceMap"
 local SceneManager = require "game.SceneManager"
+local StoryPanel = require "ui.StoryPanel"
 
 local DialogueUI = {}
 
 ---@type boolean
 local open_ = false
 ---@type table|nil
-local state_ = nil   -- { spec, phase, lineIndex, locked, onDone, onChoose }
+local state_ = nil
 ---@type Panel|nil
-local layer_ = nil   -- 持久对话层（挂在 HUD 根上，Show/Hide 只改可见与子节点）
+local layer_ = nil
+
+local SCENE_BG = {
+    chaoyang_gukou = "image/立绘/场景_朝阳谷口.png",
+    luoshui_yinshan = "image/立绘/场景_洛水阴山.png",
+    gunei_taolin = "image/立绘/场景_谷内桃林.png",
+    gu_nei_taolin = "image/立绘/场景_谷内桃林.png",
+}
+
+local NPC_PORTRAIT = {
+    ["守桃老人"] = "image/立绘/守桃老人.jpg",
+    ["无面鬼"] = "image/立绘/无面鬼.png",
+    ["素女"] = "image/立绘/素女.jpg",
+    ["无幽"] = "image/立绘/无幽.jpg",
+    ["旁白"] = "image/立绘/素女.jpg",
+}
 
 ---@return Widget|nil
 local function hudRoot()
@@ -44,7 +55,7 @@ local function ensureLayer()
     return layer_
 end
 
-local function mountPanel(panel)
+local function mountRoot(panel)
     local layer = ensureLayer()
     if layer == nil then
         print("[DialogueUI] 对话层挂载失败：HUD 根不存在")
@@ -55,39 +66,44 @@ local function mountPanel(panel)
     layer:SetVisible(true)
 end
 
-local SCENE_BG = {
-    chaoyang_gukou = "image/立绘/场景_朝阳谷口.png",
-    luoshui_yinshan = "image/立绘/场景_洛水阴山.png",
-    gu_nei_taolin = "image/立绘/场景_谷内桃林.png",
-}
-
-local NPC_PORTRAIT = {
-    ["守桃老人"] = "image/立绘/守桃老人.jpg",
-    ["无面鬼"] = "image/立绘/无面鬼.png",
-    ["素女"] = "image/立绘/素女.jpg",
-    ["旁白"] = "image/立绘/场景_朝阳谷口.png",
-}
-
----@return string|nil
-local function choiceBackdrop()
+---@return string
+local function sceneBackdrop()
     local sceneId = SceneManager.GetCurrentScene and SceneManager.GetCurrentScene() or nil
     if sceneId ~= nil and SCENE_BG[sceneId] ~= nil then
         return SCENE_BG[sceneId]
     end
+    return "image/立绘/场景_朝阳谷口.png"
+end
+
+---@return string
+local function npcPortrait()
     local npc = state_ and state_.spec and state_.spec.npc
     if npc ~= nil and NPC_PORTRAIT[npc] ~= nil then
         return NPC_PORTRAIT[npc]
     end
-    return "image/立绘/场景_朝阳谷口.png"
+    return "image/立绘/守桃老人.jpg"
 end
 
---- 对话是否打开（主循环据此停玩家移动）
----@return boolean
+local function currentPages()
+    local s = state_
+    if s == nil then return { "" } end
+    return s.pages or { "" }
+end
+
+local function rebuildPages()
+    local s = state_
+    if s == nil then return end
+    local spec = s.spec
+    local lines = spec.lines or spec.intro or {}
+    local raw = lines[s.lineIndex] or ""
+    s.pages = StoryPanel.Paginate(raw)
+    s.pageIndex = 1
+end
+
 function DialogueUI.IsOpen()
     return open_
 end
 
---- 关闭对话（只隐藏对话层，不替换 UI 根）
 function DialogueUI.Hide()
     if not open_ then return end
     GameAudio.StopVoice()
@@ -99,37 +115,40 @@ function DialogueUI.Hide()
     state_ = nil
 end
 
---- 顺序对白：npc + 多行文本，"继续"或空格/回车逐行推进，播完回调 onDone
----@param spec table { npc?: string, lines: string[], onDone?: function }
+---@param spec table
 function DialogueUI.ShowDialogue(spec)
     state_ = {
         spec = spec,
         phase = "text",
         lineIndex = 1,
+        pageIndex = 1,
+        pages = {},
         locked = false,
         onDone = spec.onDone,
         onChoose = nil,
     }
     open_ = true
+    rebuildPages()
     RenderText()
 end
 
---- 三选交互：先 intro 文本（可选），后 prompt + 选项按钮；选中即锁并回调 onChoose(key)
----@param spec table { npc?: string, intro?: string[], prompt: string, choices: table, choiceOrder?: string[], onChoose: function }
+---@param spec table
 function DialogueUI.ShowChoice(spec)
     state_ = {
         spec = spec,
         phase = "text",
         lineIndex = 1,
+        pageIndex = 1,
+        pages = {},
         locked = false,
         onDone = nil,
         onChoose = spec.onChoose,
     }
     open_ = true
+    rebuildPages()
     RenderText()
 end
 
---- 主循环推进输入（空格/回车 = 继续）
 function DialogueUI.HandleInput()
     if not open_ or state_ == nil then return end
     if state_.phase ~= "text" then return end
@@ -138,72 +157,77 @@ function DialogueUI.HandleInput()
     end
 end
 
---- 渲染文本阶段（对话行 / 选择前的 intro 行）
 function RenderText()
     local s = state_
     if s == nil then return end
     local spec = s.spec
-    local lines = spec.lines or spec.intro or {}
-    local hasMore = s.lineIndex < #lines
-    local text = lines[s.lineIndex] or ""
+    local pages = currentPages()
+    local text = pages[s.pageIndex] or ""
     local npc = spec.npc or ""
-    local voice = VoiceMap.Get(spec.linesKey, s.lineIndex)
-    if voice ~= nil then
-        GameAudio.PlayVoice(voice)
+    local lines = spec.lines or spec.intro or {}
+    local moreInLine = s.pageIndex < #pages
+    local moreLines = s.lineIndex < #lines
+    local hasMore = moreInLine or moreLines
+    if s.pageIndex == 1 then
+        local voice = VoiceMap.Get(spec.linesKey, s.lineIndex)
+        if voice ~= nil then
+            GameAudio.PlayVoice(voice)
+        end
     end
 
-    local isNarrator = (npc == "旁白" or npc == "")
-    mountPanel(UI.Panel {
+    local shell = StoryPanel.Wrap({
+        UI.Label {
+            text = npc,
+            fontSize = StoryPanel.NAME_SIZE,
+            fontColor = StoryPanel.NAME_COLOR,
+            width = "100%",
+            visible = npc ~= "",
+        },
+        UI.Label {
+            text = text,
+            fontSize = StoryPanel.LINE_SIZE,
+            fontColor = StoryPanel.TEXT_COLOR,
+            width = "100%",
+            maxLines = 2,
+            lineHeight = 1.4,
+            whiteSpace = "normal",
+            marginTop = 8,
+        },
+        UI.Button {
+            text = hasMore and "下一步" or "下一步",
+            variant = "secondary",
+            alignSelf = "flex-end",
+            height = StoryPanel.BTN_HEIGHT,
+            marginTop = 12,
+            onClick = function()
+                AdvanceText()
+            end,
+        },
+    })
+    mountRoot(UI.Panel {
         position = "absolute",
         top = 0, left = 0, right = 0, bottom = 0,
         pointerEvents = "box-none",
-        children = {
-            UI.Panel {
-                position = "absolute",
-                left = 10, right = 10, bottom = 16,
-                padding = { 16, 18, 18, 18 },
-                backgroundColor = { 42, 28, 18, 168 },
-                borderRadius = 16,
-                children = {
-                    UI.Label {
-                        text = npc,
-                        fontSize = 18,
-                        fontColor = { 255, 214, 158, 255 },
-                        width = "100%",
-                        visible = npc ~= "",
-                    },
-                    UI.Label {
-                        text = text,
-                        fontSize = isNarrator and 26 or 22,
-                        fontColor = { 255, 248, 236, 255 },
-                        width = "100%",
-                        maxLines = 6,
-                        marginTop = 8,
-                    },
-                    UI.Button {
-                        text = hasMore and "继续 ›" or "下一步",
-                        variant = "secondary",
-                        alignSelf = "flex-end",
-                        marginTop = 12,
-                        onClick = function()
-                            AdvanceText()
-                        end,
-                    },
-                },
-            },
-        },
+        children = { shell },
     })
 end
 
---- 推进一行 / 文本播完进入下一阶段
 function AdvanceText()
     local s = state_
     if s == nil or s.locked then return end
     local spec = s.spec
+    local pages = currentPages()
+    if s.pageIndex < #pages then
+        GameAudio.PlaySfx("audio/sfx/sfx_ui_page.mp3")
+        s.pageIndex = s.pageIndex + 1
+        RenderText()
+        return
+    end
     local lines = spec.lines or spec.intro or {}
     if s.lineIndex < #lines then
         GameAudio.PlaySfx("audio/sfx/sfx_ui_page.mp3")
         s.lineIndex = s.lineIndex + 1
+        rebuildPages()
         RenderText()
         return
     end
@@ -216,23 +240,21 @@ function AdvanceText()
     end
 end
 
---- 渲染选择阶段（prompt + 选项按钮，选中即锁）
 function RenderChoice()
     local s = state_
     if s == nil then return end
     local spec = s.spec
-
-    local children = {
+    local inner = {
         UI.Label {
             text = spec.prompt or "",
-            fontSize = 22,
-            fontColor = { 255, 248, 236, 255 },
+            fontSize = StoryPanel.PROMPT_SIZE,
+            fontColor = StoryPanel.TEXT_COLOR,
             width = "100%",
-            maxLines = 4,
+            maxLines = 2,
+            lineHeight = 1.4,
+            whiteSpace = "normal",
         },
     }
-
-    -- 确定性顺序（choiceOrder 未声明时按 pairs 无序）
     local order = spec.choiceOrder
     if order == nil then
         order = {}
@@ -240,7 +262,6 @@ function RenderChoice()
             table.insert(order, key)
         end
     end
-
     ---@type table[]
     local buttons = {}
     for _, key in ipairs(order) do
@@ -250,12 +271,12 @@ function RenderChoice()
                 text = label,
                 variant = "secondary",
                 textAlign = "left",
-                height = 52,
-                marginTop = 10,
+                height = StoryPanel.BTN_HEIGHT,
+                marginTop = 8,
                 onClick = function()
                     if s.locked then return end
                     GameAudio.PlaySfx("audio/sfx/sfx_ui_click.mp3")
-                    s.locked = true              -- 选项锁定：防连点双加（《21》§5）
+                    s.locked = true
                     for _, b in ipairs(buttons) do
                         b:SetDisabled(true)
                     end
@@ -263,35 +284,37 @@ function RenderChoice()
                 end,
             }
             table.insert(buttons, btn)
-            table.insert(children, btn)
+            table.insert(inner, btn)
         end
     end
 
-    local backdrop = choiceBackdrop()
-    mountPanel(UI.Panel {
+    local shell = StoryPanel.Wrap(inner)
+    mountRoot(UI.Panel {
         position = "absolute",
         top = 0, left = 0, right = 0, bottom = 0,
-        backgroundImage = backdrop,
-        backgroundColor = { 20, 12, 8, 90 },
-        justifyContent = "flex-end",
+        backgroundImage = sceneBackdrop(),
         children = {
             UI.Panel {
-                width = "100%",
-                height = "42%",
-                backgroundColor = { 12, 8, 6, 70 },
+                position = "absolute",
+                top = 0, left = 0, right = 0, bottom = 0,
+                backgroundColor = { 12, 8, 6, 110 },
+                pointerEvents = "none",
             },
             UI.Panel {
-                width = "100%",
-                padding = { 18, 16, 28, 16 },
-                backgroundColor = { 42, 28, 18, 176 },
-                children = children,
+                position = "absolute",
+                right = 0,
+                top = "12%",
+                width = "42%",
+                height = "58%",
+                backgroundImage = npcPortrait(),
+                pointerEvents = "none",
             },
+            shell,
         },
     })
 end
 
---- 结束对话：关闭 UI 并回调
----@param choiceKey string|nil 选择键（无选择时为 nil）
+---@param choiceKey string|nil
 function Finish(choiceKey)
     local s = state_
     DialogueUI.Hide()

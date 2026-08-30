@@ -1,7 +1,6 @@
 -- ============================================================================
 -- ui/MainMenu.lua
--- 主菜单：标题 + 开始游戏 / 继续游戏（有存档才显示）。把"启动即自动续档"改为玩家主动选择。
--- 白模阶段单档 slot1；S9 前可保留为正式主菜单框架。
+-- 封面：素女立绘全屏底 + 标题叠字 + 底部按钮分层（去掉居中卡片）。
 -- ============================================================================
 
 local UI = require "urhox-libs/UI"
@@ -10,6 +9,7 @@ local FlowController = require "flow.FlowController"
 local MediaPlayer = require "media.MediaPlayer"
 local EndingScreen = require "ui.EndingScreen"
 local GameAudio = require "audio.GameAudio"
+local StoryPanel = require "ui.StoryPanel"
 
 local MainMenu = {}
 
@@ -18,13 +18,12 @@ local root_ = nil
 ---@type table|nil
 local continueBtn_ = nil
 ---@type function|nil
-local onStartGame_ = nil   -- 开始新游戏后的回调（main 注入，用于关闭媒体/场景等）
+local onStartGame_ = nil
 
---- 开始新游戏（清档重置）
 local function doStart()
-    MediaPlayer.Stop(true)             -- 停掉结局/讲述残留媒体，避免与新开局串台
+    MediaPlayer.Stop(true)
     EndingScreen.Close()
-    local fresh = PlayerData.Clear()   -- 删除存档 + 全新默认数据
+    local fresh = PlayerData.Clear()
     FlowController.Init(fresh)
     FlowController.Start()
     MainMenu.Close()
@@ -33,7 +32,6 @@ local function doStart()
     end
 end
 
---- 继续游戏（读档续播；与 F9 一致）
 local function doContinue()
     local loaded = PlayerData.Load()
     if loaded == nil then
@@ -52,10 +50,8 @@ local function doContinue()
     end
 end
 
---- 显示主菜单（若尚未创建则先建）
 function MainMenu.Show()
     if root_ == nil then return end
-    -- 有存档才显示"继续"
     local hasSave = PlayerData.Load() ~= nil
     if continueBtn_ ~= nil then
         continueBtn_:SetVisible(hasSave)
@@ -71,7 +67,7 @@ function MainMenu.Close()
     end
 end
 
----@return boolean 是否已创建
+---@return boolean
 function MainMenu.Create(uiRoot)
     if root_ ~= nil then return true end
     if uiRoot == nil then return false end
@@ -80,62 +76,90 @@ function MainMenu.Create(uiRoot)
         id = "mainMenu",
         position = "absolute",
         top = 0, left = 0, right = 0, bottom = 0,
-        backgroundColor = { 16, 14, 12, 245 },
-        justifyContent = "center",
-        alignItems = "center",
+        backgroundImage = "image/立绘/素女.jpg",
         zIndex = 96,
         visible = false,
     }
-    local card = UI.Panel {
-        width = "84%",
-        maxWidth = 420,
-        backgroundColor = { 30, 26, 24, 250 },
-        borderRadius = 16,
-        paddingH = 22,
-        paddingV = 24,
-        flexDirection = "column",
-        gap = 14,
-        alignItems = "center",
+    local dim = UI.Panel {
+        position = "absolute",
+        top = 0, left = 0, right = 0, bottom = 0,
+        backgroundColor = { 12, 8, 6, 88 },
+        pointerEvents = "none",
     }
-    card:AddChild(UI.Label {
-        text = "桃素洛无幽 · 素女篇",
-        fontSize = 26,
-        fontColor = { 246, 241, 231, 255 },
-    })
-    card:AddChild(UI.Label {
-        text = "一个关于等待、遗忘与重逢的故事",
-        fontSize = 13,
-        fontColor = { 190, 182, 170, 255 },
-    })
-    card:AddChild(UI.Button {
-        text = "开始游戏",
-        variant = "primary",
-        width = "100%",
-        height = 50,
-        onClick = function()
-            GameAudio.PlaySfx("audio/sfx/sfx_ui_confirm.mp3")
-            doStart()
-        end,
-    })
+    local titleBlock = UI.Panel {
+        position = "absolute",
+        top = "10%",
+        left = "6%",
+        right = "6%",
+        alignItems = "center",
+        pointerEvents = "none",
+        children = {
+            UI.Label {
+                text = "桃素洛无幽",
+                fontSize = 36,
+                fontColor = { 255, 244, 220, 255 },
+                textAlign = "center",
+                width = "100%",
+                textStroke = { width = 1.4, color = { 40, 22, 12, 200 } },
+            },
+            UI.Label {
+                text = "素女篇",
+                fontSize = 22,
+                fontColor = { 255, 214, 158, 255 },
+                textAlign = "center",
+                width = "100%",
+                marginTop = 8,
+                textStroke = { width = 1, color = { 40, 22, 12, 180 } },
+            },
+            UI.Label {
+                text = "一个关于等待、遗忘与重逢的故事",
+                fontSize = 15,
+                fontColor = { 236, 224, 204, 255 },
+                textAlign = "center",
+                width = "100%",
+                marginTop = 16,
+                textStroke = { width = 0.8, color = { 20, 12, 8, 160 } },
+            },
+        },
+    }
     continueBtn_ = UI.Button {
         text = "继续游戏",
         variant = "secondary",
         width = "100%",
-        height = 50,
+        height = StoryPanel.BTN_HEIGHT,
+        marginTop = 10,
         onClick = function()
             GameAudio.PlaySfx("audio/sfx/sfx_ui_confirm.mp3")
             doContinue()
         end,
     }
-    card:AddChild(continueBtn_)
-    root_:AddChild(card)
+    local actions = UI.Panel {
+        position = "absolute",
+        left = "8%",
+        right = "8%",
+        bottom = "8%",
+        children = {
+            UI.Button {
+                text = "开始游戏",
+                variant = "primary",
+                width = "100%",
+                height = 52,
+                onClick = function()
+                    GameAudio.PlaySfx("audio/sfx/sfx_ui_confirm.mp3")
+                    doStart()
+                end,
+            },
+            continueBtn_,
+        },
+    }
+    root_:AddChild(dim)
+    root_:AddChild(titleBlock)
+    root_:AddChild(actions)
     uiRoot:AddChild(root_)
-
     print("[MainMenu] 已创建主菜单")
     return true
 end
 
---- 开始/继续新游戏后的回调（main 注入）
 ---@param cb function|nil
 function MainMenu.SetOnStart(cb)
     onStartGame_ = cb

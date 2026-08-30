@@ -1,6 +1,6 @@
 -- ============================================================================
 -- ui/ChapterCard.lua
--- 切章时展示章节卡（图片 + 回目），约 1.8s 或点击关闭。一次建卡，Show 只改图/文。
+-- 切章：整屏应景场景底 + 中间水墨卡（印章/题跋保留）。
 -- ============================================================================
 
 local UI = require "urhox-libs/UI"
@@ -9,16 +9,42 @@ local GameAudio = require "audio.GameAudio"
 local ChapterCard = {}
 
 local CARDS = {
-    ch0 = { image = "image/章节卡/ch0_桃花谷口.png", title = "楔子 · 桃花谷口", seal = "木" },
-    ch1 = { image = "image/章节卡/ch1_春信至.png", title = "收集 · 朝阳之谷", seal = "火" },
-    ch2 = { image = "image/章节卡/ch4_洛水阴.png", title = "第四回 · 洛水阴，无面泪", seal = "水" },
-    -- 运行时章节 id：ch2=洛水阴，ch3=记忆印，ch4=尾声（ch2_十二载 / ch3_一夜飘零 不单独切章）
-    ch3 = { image = "image/章节卡/ch5_记忆印.png", title = "第五回 · 记忆印，六艺寻", seal = "金" },
-    ch4 = { image = "image/章节卡/ch6_无涕桃.png", title = "尾声 · 无涕桃，人面何处", seal = "人面不知何处去，桃花依旧笑春风" },
+    ch0 = {
+        image = "image/章节卡/ch0_桃花谷口.png",
+        scene = "image/立绘/场景_朝阳谷口.png",
+        title = "楔子 · 桃花谷口",
+        seal = "木",
+    },
+    ch1 = {
+        image = "image/章节卡/ch1_春信至.png",
+        scene = "image/立绘/场景_朝阳谷口.png",
+        title = "收集 · 朝阳之谷",
+        seal = "火",
+    },
+    ch2 = {
+        image = "image/章节卡/ch4_洛水阴.png",
+        scene = "image/立绘/场景_洛水阴山.png",
+        title = "第四回 · 洛水阴，无面泪",
+        seal = "水",
+    },
+    ch3 = {
+        image = "image/章节卡/ch5_记忆印.png",
+        scene = "image/立绘/场景_洛水阴山.png",
+        title = "第五回 · 记忆印，六艺寻",
+        seal = "金",
+    },
+    ch4 = {
+        image = "image/章节卡/ch6_无涕桃.png",
+        scene = "image/立绘/场景_朝阳谷口.png",
+        title = "尾声 · 无涕桃，人面何处",
+        seal = "人面不知何处去，桃花依旧笑春风",
+    },
 }
 
 ---@type Panel|nil
 local root_ = nil
+---@type Panel|nil
+local sceneBg_ = nil
 ---@type Panel|nil
 local art_ = nil
 ---@type Label|nil
@@ -49,41 +75,55 @@ function ChapterCard.Create(uiRoot)
         id = "chapterCard",
         position = "absolute",
         top = 0, left = 0, right = 0, bottom = 0,
-        backgroundColor = { 8, 6, 8, 250 },
-        justifyContent = "center",
-        alignItems = "center",
         zIndex = 98,
         visible = false,
     }
+    sceneBg_ = UI.Panel {
+        position = "absolute",
+        top = 0, left = 0, right = 0, bottom = 0,
+        backgroundColor = { 18, 12, 10, 80 },
+    }
+    local dim = UI.Panel {
+        position = "absolute",
+        top = 0, left = 0, right = 0, bottom = 0,
+        backgroundColor = { 12, 8, 6, 90 },
+        pointerEvents = "none",
+    }
     local card = UI.Panel {
-        width = "88%",
+        width = "86%",
         maxWidth = 420,
         flexDirection = "column",
         alignItems = "center",
+        alignSelf = "center",
+        marginTop = "10%",
         gap = 10,
         padding = 12,
-        backgroundColor = { 22, 18, 16, 250 },
-        borderRadius = 14,
+        backgroundColor = { 28, 22, 18, 210 },
+        borderRadius = 16,
+        borderWidth = 1,
+        borderColor = { 210, 176, 128, 90 },
     }
     art_ = UI.Panel {
         width = "100%",
-        height = 420,
+        height = 360,
         borderRadius = 10,
         backgroundColor = { 30, 26, 24, 255 },
     }
     titleLabel_ = UI.Label {
         text = "",
-        fontSize = 18,
+        fontSize = 20,
         fontColor = { 246, 241, 231, 255 },
         textAlign = "center",
         width = "100%",
     }
     sealLabel_ = UI.Label {
         text = "",
-        fontSize = 13,
+        fontSize = 14,
         fontColor = { 190, 160, 130, 255 },
         textAlign = "center",
         width = "100%",
+        maxLines = 2,
+        whiteSpace = "normal",
     }
     card:AddChild(art_)
     card:AddChild(titleLabel_)
@@ -98,6 +138,8 @@ function ChapterCard.Create(uiRoot)
             doHide()
         end,
     })
+    root_:AddChild(sceneBg_)
+    root_:AddChild(dim)
     root_:AddChild(card)
     uiRoot:AddChild(root_)
     print("[ChapterCard] 已创建章节卡")
@@ -112,6 +154,9 @@ function ChapterCard.Show(chapterId, onHidden)
         return
     end
     local info = CARDS[chapterId] or CARDS.ch0
+    if sceneBg_ ~= nil then
+        sceneBg_:SetStyle({ backgroundImage = info.scene })
+    end
     if art_ ~= nil then
         art_:SetStyle({ backgroundImage = info.image })
     end
