@@ -14,6 +14,48 @@ local WhiteBox = require "game.WhiteBox"
 
 local SceneManager = {}
 
+-- C 阶段 NPC 3D 模型（create_3d_asset 生成；虚拟路径加载，加载失败回退原白模保玩法）
+--   守桃老人：rig 服务侧 not riggable → 回退静态 texture 版 MDL（NPC 本静止，静态可接受）
+--   无面鬼：rig 成功但 NPC 不播动画，用 rig 版 MDL（脚底在包围盒 Min Y=0，落地方便）
+-- 模型包围盒（model-info 实测）：
+--   老人 texture-2：Size ≈ (0.37, 1.0, 0.44)，中心居中（Min Y ≈ -0.5）
+--   无面鬼 rig-1：Size ≈ (1.0, 0.89, 0.79)，Min Y = 0
+local OLDMAN_MODEL = "model/0cc0e7462fb948eca0f19b89bc280e0f/Meshes/texture-2-5c110f9c-c50a-47d4-a55a-ddf40487ee0f.mdl"
+local OLDMAN_MATERIAL = "model/0cc0e7462fb948eca0f19b89bc280e0f/Materials/texture-2-5c110f9c-c50a-47d4-a55a-ddf40487ee0f_00_tripo_node_906c0bfe-1b6c-449a-a961-ef3c15017f83_material.xml"
+local NOFACE_MODEL = "model/a95df9a8c56e4bc6a37831cb6f8c5892/Meshes/rig-1-b23c4dcd-4f9f-4bf6-8667-53e85d62cf22.mdl"
+local NOFACE_MATERIAL = "model/a95df9a8c56e4bc6a37831cb6f8c5892/Materials/rig-1-b23c4dcd-4f9f-4bf6-8667-53e85d62cf22_00_tripo_material_93788dd0-9aa3-4813-aae8-8d7b2107ab93.xml"
+local OLDMAN_HEIGHT = 1.9  -- 目标身高（米；原白模柱 1.5+头球顶 2.15，取 1.9 贴"1.8-2m"）
+local NOFACE_SCALE = 1.25  -- 蜷坐目标高 ≈1.12m（base 0.893 × 1.25），坐石台上不显小
+
+--- 在 parent 下挂 NPC 模型（虚拟路径 Model+Material；失败返回 nil，调用方回退白模）
+---@param parent Node
+---@param modelPath string
+---@param matPath string
+---@param scale number 整体等比缩放
+---@param yOffset number 子节点 Y 偏移（使脚底落在 parent 原点）
+---@param yaw number 绕 Y 朝向角（度；视觉正面 +X，+90° 转 +Z，同 B 阶段素女实测）
+---@return Node|nil
+local function AttachNpcModel(parent, modelPath, matPath, scale, yOffset, yaw)
+    local mdl = cache:GetResource("Model", modelPath)
+    if mdl == nil then
+        print("[SceneManager] 警告：NPC 模型加载失败，回退白模: " .. modelPath)
+        return nil
+    end
+    local node = parent:CreateChild("NpcModelNode")
+    local sm = node:CreateComponent("StaticModel")
+    sm:SetModel(mdl)
+    local mat = cache:GetResource("Material", matPath)
+    if mat ~= nil then
+        sm:SetMaterial(mat)
+    end
+    sm.castShadows = true
+    node.scale = Vector3(scale, scale, scale)
+    node.position = Vector3(0, yOffset, 0)
+    node:SetRotation(Quaternion(yaw, Vector3.UP))
+    print("[SceneManager] NPC 模型已加载: " .. modelPath)
+    return node
+end
+
 ---@type Scene|nil
 local scene_ = nil
 ---@type table|nil
@@ -224,12 +266,27 @@ function BuildChaoyangGukou(root)
         WhiteBox.BlossomMarker(scene_, spot.pos, spot.key, spot.rgb)
     end
 
-    -- 守桃老人（S2 对话 NPC，白模：衣袍圆柱 + 头颅球 + 手杖）
+    -- 守桃老人（S2 对话 NPC：C 阶段换 3D 模型，古风拄杖老者；加载失败回退原白模柱+头球）
     local oldManPos = Vector3(3, 0, -16)
-    WhiteBox.Cylinder(scene_, "OldMan", Vector3(oldManPos.x, 0.75, oldManPos.z), 0.7, 1.5,
-        { 0.46, 0.38, 0.32 })
-    WhiteBox.Sphere(scene_, "OldManHead", Vector3(oldManPos.x, 1.75, oldManPos.z), 0.4,
-        { 0.90, 0.82, 0.74 })
+    local oldManNode = scene_:CreateChild("OldMan")
+    oldManNode.position = oldManPos
+    -- 模型中心居中（Min Y ≈ -0.5）→ 子节点上移半身高使脚底落地；
+    -- 视觉正面实测 +90° 朝 -Z（C 阶段截图），故 -90° 使正面朝 +Z（Int_oldman/玩家来向）
+    local oldManModel = AttachNpcModel(oldManNode, OLDMAN_MODEL, OLDMAN_MATERIAL,
+        OLDMAN_HEIGHT, OLDMAN_HEIGHT / 2, -90)
+    if oldManModel == nil then
+        WhiteBox.Cylinder(oldManNode, "OldManBody", Vector3(0, 0.75, 0), 0.7, 1.5,
+            { 0.46, 0.38, 0.32 })
+        WhiteBox.Sphere(oldManNode, "OldManHead", Vector3(0, 1.75, 0), 0.4,
+            { 0.90, 0.82, 0.74 })
+    else
+        -- 模型无碰撞：补圆柱 GROUND 碰撞体（与原白模柱等效，防穿身）
+        local body = oldManNode:CreateComponent("RigidBody")
+        body.collisionLayer = WhiteBox.LAYER_GROUND
+        body.collisionMask = 0xFFFF
+        local shape = oldManNode:CreateComponent("CollisionShape")
+        shape:SetCylinder(0.7, OLDMAN_HEIGHT, Vector3(0, OLDMAN_HEIGHT / 2, 0))
+    end
     -- 交互点（走近触发对话：P02 完成条件，节点名 Int_oldman）
     WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
         { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true,
@@ -326,10 +383,28 @@ function BuildLuoShuiYinShan(root)
     WhiteBox.Box(scene_, "SpringPostR", Vector3(-4.35, 1.5, 14), Vector3(0.16, 0.9, 0.16), { 0.26, 0.28, 0.34 })
     WhiteBox.Beacon(scene_, "Beacon_spring", Vector3(-5.2, 0.5, 14), { 0.40, 0.62, 0.82 }, 1.4)
 
-    -- 无面鬼处（石台 + 暗色标记）
+    -- 无面鬼处（石台 + C 阶段 3D 模型：白衣/空脸/泪痕蜷坐鬼，坐在石台顶；失败回退原暗红球）
     -- R12 近景靠边：原 x=2 石台直径 4 左缘压出生→小镇中心路线 → 右移到 x=3.5 让出中线
     WhiteBox.Cylinder(scene_, "GhostStone", Vector3(3.5, 0.3, 16), 4.0, 0.6, { 0.28, 0.26, 0.30 })
-    WhiteBox.Sphere(scene_, "GhostMarker", Vector3(3.5, 1.3, 16), 0.5, { 0.55, 0.30, 0.34 }, { unlit = true })
+    local ghostNode = scene_:CreateChild("GhostMarker")
+    -- 石台顶面 y=0.6；x 偏 +0.55 让开台心 Beacon_ghost 光柱与 Blossom_water 球（原样保留），
+    -- 仍在"约(3.5,·,16)"台顶范围内，真机截图实测光柱穿脸遮挡
+    ghostNode.position = Vector3(4.05, 0.6, 16)
+    -- rig 版包围盒 Min Y=0 → 子节点无需上移即脚底落台面；
+    -- 视觉正面实测 +90° 朝 -Z，故 -90° 使正面朝 +Z（出生点/玩家来向）
+    local ghostModel = AttachNpcModel(ghostNode, NOFACE_MODEL, NOFACE_MATERIAL,
+        NOFACE_SCALE, 0, -90)
+    if ghostModel == nil then
+        WhiteBox.Sphere(ghostNode, "GhostMarkerBall", Vector3(0, 0.7, 0), 0.5,
+            { 0.55, 0.30, 0.34 }, { unlit = true })
+    else
+        -- 模型无碰撞：补小圆柱 GROUND 碰撞体（防跳上石台穿身）
+        local body = ghostNode:CreateComponent("RigidBody")
+        body.collisionLayer = WhiteBox.LAYER_GROUND
+        body.collisionMask = 0xFFFF
+        local shape = ghostNode:CreateComponent("CollisionShape")
+        shape:SetCylinder(1.0, 1.2, Vector3(0, 0.6, 0))
+    end
     -- 无面鬼处更醒目：暗红/冷色光柱 + 局部冷光
     WhiteBox.Beacon(scene_, "Beacon_ghost", Vector3(3.5, 0.6, 16), { 0.72, 0.22, 0.28 }, 3.2)
     WhiteBox.Beacon(scene_, "Beacon_ghost_cold", Vector3(4.4, 0.5, 16.8), { 0.38, 0.48, 0.72 }, 2.0)
