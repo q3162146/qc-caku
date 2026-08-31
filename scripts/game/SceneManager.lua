@@ -12,6 +12,7 @@
 
 local WhiteBox = require "game.WhiteBox"
 local Backdrop = require "game.Backdrop"
+local SceneProps = require "game.SceneProps"
 
 local SceneManager = {}
 
@@ -55,6 +56,63 @@ local function AttachNpcModel(parent, modelPath, matPath, scale, yOffset, yaw)
     node:SetRotation(Quaternion(yaw, Vector3.UP))
     print("[SceneManager] NPC 模型已加载: " .. modelPath)
     return node
+end
+
+-- ============================================================================
+-- D2 场景补齐辅助：白模道具 → 真实模型视觉替换（保留原白模碰撞）
+-- ============================================================================
+
+--- 取 root 子树内多个名字的节点（跳过不存在的）
+---@param root Node
+---@param names string[]
+---@return Node[]
+local function GetNodes(root, names)
+    ---@type Node[]
+    local out = {}
+    for _, n in ipairs(names) do
+        ---@type Node|nil
+        local node = root:GetChild(n, true)
+        if node ~= nil then
+            table.insert(out, node)
+        end
+    end
+    return out
+end
+
+--- 白模节点组 → 单个真实模型视觉替换：
+---   视觉加载成功 → 剥掉全部白模节点的 StaticModel（碰撞体原样保留）
+---   视觉加载失败 → 保留白模视觉，玩法不破（与 C 阶段 NPC 回退同策略）
+---@param parent Node 视觉节点挂载父级（场景根 / Blossom 节点）
+---@param whiteNodes Node[] 需剥视觉的白模节点列表
+---@param visName string 视觉节点名
+---@param assetKey string SceneProps.ASSETS 键
+---@param groundPos Vector3 视觉底面中心位置（贴地/贴台面）
+---@param scale number|table 等比或 { x, y, z } 非等比
+---@param yaw? number 绕 Y 朝向角（度；制造同类道具的朝向差异）
+local function SwapToProp(parent, whiteNodes, visName, assetKey, groundPos, scale, yaw)
+    local vis = SceneProps.AttachProp(parent, visName, assetKey, groundPos, scale, yaw)
+    if vis ~= nil then
+        for _, n in ipairs(whiteNodes) do
+            SceneProps.StripVisual(n)
+        end
+    end
+    return vis
+end
+
+--- D2 桃花视觉替换：真实桃花丛挂在 Blossom_<key> 节点下（采集移除时随父节点一并消失）
+--- 触发球本体剥视觉（保留 TRIGGER 碰撞与节点名/位置不动）
+---@param bNode Node|nil Blossom_<key> 触发球节点
+---@param visXZ table { x, z } 视觉底面【世界坐标】（触发点旁/井沿等避让后位置）
+---@param standY number 视觉底面贴附面高度（地面 0 / 石台顶 0.6）
+---@param yaw? number
+local function DressBlossom(bNode, visXZ, standY, yaw)
+    if bNode == nil then return end
+    -- 挂触发球下（AttachProp 内部做父变换补偿，传世界坐标即可）
+    local vis = SceneProps.AttachProp(bNode, "Vis", "blossom",
+        Vector3(visXZ.x, standY, visXZ.z), 1.05, yaw)
+    if vis ~= nil then
+        SceneProps.StripVisual(bNode)
+    end
 end
 
 ---@type Scene|nil
@@ -235,8 +293,8 @@ end
 --- ============================================================================
 function BuildChaoyangGukou(root)
     local scene_ = root
-    -- 地面：暖色土黄
-    WhiteBox.Ground(scene_, "Ground", 18, 52, { 0.82, 0.68, 0.52 })
+    -- 地面：暖金色（D2 调色贴朝阳远景画雾带 0.90/0.84/0.74）
+    WhiteBox.Ground(scene_, "Ground", 18, 52, { 0.86, 0.76, 0.58 })
 
     -- 无涕桃（中央，略大）
     WhiteBox.PeachTree(scene_, "WutiTao", Vector3(0, 0, 0), 1.6)
@@ -272,11 +330,11 @@ function BuildChaoyangGukou(root)
 
     -- 五朵五行桃花（谷口/桃树下/望夫崖/井边/守桃老人屋 的白模占位）
     local blossomSpots = {
-        { key = "wood",   pos = Vector3(-6, 0.6, 14),   rgb = { 0.36, 0.72, 0.38 } },  -- 木（东）
-        { key = "fire",   pos = Vector3(4.5, 0.6, -6),  rgb = { 0.90, 0.35, 0.30 } },  -- 火（南，主路东侧，避开老人交互点）
-        { key = "earth",  pos = Vector3(0, 0.6, -20),   rgb = { 0.78, 0.62, 0.36 } },  -- 土（中）
-        { key = "metal",  pos = Vector3(-6, 0.6, -14),  rgb = { 0.82, 0.82, 0.86 } },  -- 金（西）
-        { key = "water",  pos = Vector3(4, 0.6, 20),    rgb = { 0.34, 0.55, 0.85 } },  -- 水（北）
+        { key = "wood",   pos = Vector3(-6, 0.6, 14),   rgb = { 0.36, 0.72, 0.38 }, yaw = 0 },    -- 木（东）
+        { key = "fire",   pos = Vector3(4.5, 0.6, -6),  rgb = { 0.90, 0.35, 0.30 }, yaw = 70 },   -- 火（南，主路东侧，避开老人交互点）
+        { key = "earth",  pos = Vector3(0, 0.6, -20),   rgb = { 0.78, 0.62, 0.36 }, yaw = 140 },  -- 土（中）
+        { key = "metal",  pos = Vector3(-6, 0.6, -14),  rgb = { 0.82, 0.82, 0.86 }, yaw = 210 },  -- 金（西）
+        { key = "water",  pos = Vector3(4, 0.6, 20),    rgb = { 0.34, 0.55, 0.85 }, yaw = 280 },  -- 水（北）
     }
     for _, spot in ipairs(blossomSpots) do
         WhiteBox.BlossomMarker(scene_, spot.pos, spot.key, spot.rgb)
@@ -327,7 +385,37 @@ function BuildChaoyangGukou(root)
 
     -- 边界墙
     -- 边界墙（R12 根因修复：后墙外移 25.5→32，给第三人称相机留 space；distance 6.8 不被墙碰撞压回）
-    WhiteBox.BoundaryWalls(scene_, 8.5, 32.0, 3.0, { 0.55, 0.42, 0.32 })
+    -- D2 调色：暖金贴朝阳远景画雾带
+    WhiteBox.BoundaryWalls(scene_, 8.5, 32.0, 3.0, { 0.74, 0.63, 0.50 })
+
+    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发/光柱原位不动） ==========
+    -- 无涕桃 → 真实桃树（原白模树冠顶 ≈3.0m → 模型等比 3.4；树干圆柱碰撞保留）
+    SwapToProp(scene_, GetNodes(scene_, { "WutiTao_Trunk", "WutiTao_Canopy", "WutiTao_Canopy2" }),
+        "WutiTao_Visual", "peach_tree", Vector3(0, 0, 0), 3.4, 20)
+    -- 环石×8 → 真实石板（底面贴地，位置不动）
+    for i = 1, 8 do
+        local ringName = "WutiTaoRing" .. i
+        ---@type Node|nil
+        local ringNode = scene_:GetChild(ringName, true)
+        if ringNode ~= nil then
+            local rp = ringNode.position
+            -- 非等比：XZ 0.6m 见方、高 ≈0.29m（贴原白模石板 0.55×0.24×0.55）
+            SwapToProp(scene_, { ringNode }, ringName .. "_Visual", "stone_slab",
+                Vector3(rp.x, 0, rp.z), { x = 0.6, y = 2.2, z = 0.6 }, i * 45)
+        end
+    end
+    -- 素女守望处 → 观景台/望夫石（XZ 铺满原 3×3 碰撞台；望夫石圆润石体立台上）
+    SwapToProp(scene_, GetNodes(scene_, { "WatchPlatform", "WatchMarker" }),
+        "WatchPlatform_Visual", "watch_altar", Vector3(5, 0, 10), { x = 3.2, y = 1.0, z = 3.2 }, -15)
+    -- 老人旁矮灯 → 真实古风灯柱（暖点光保留）
+    SwapToProp(scene_, GetNodes(scene_, { "OldManLampPost", "OldManLamp" }),
+        "OldManLamp_Visual", "lamp_post",
+        Vector3(oldManPos.x + 1.4, 0, oldManPos.z - 0.6), 1.6, 0)
+    -- 五朵桃花 → 真实桃花丛（触发球节点名/位置/碰撞不动；采集随父节点一并移除）
+    for _, spot in ipairs(blossomSpots) do
+        DressBlossom(scene_:GetChild("Blossom_" .. spot.key, true),
+            { x = spot.pos.x, z = spot.pos.z }, 0, spot.yaw)
+    end
 
     -- 出生点
     return Vector3(0, 0.1, 22)
@@ -338,8 +426,8 @@ end
 --- ============================================================================
 function BuildGuNeiTaoLin(root)
     local scene_ = root
-    -- 地面：偏绿土色
-    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.62, 0.62, 0.48 })
+    -- 地面：青绿清幽（D2 调色贴桃林远景画雾带 0.80/0.83/0.76）
+    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.55, 0.62, 0.48 })
 
     -- 守桃老人屋（盒屋 + 斜顶）
     WhiteBox.Box(scene_, "OldManHouse", Vector3(-4, 1.2, -14), Vector3(5, 2.4, 4.5), { 0.66, 0.52, 0.38 })
@@ -366,7 +454,34 @@ function BuildGuNeiTaoLin(root)
 
     -- 边界墙（D1：青绿灰贴谷内桃林远景雾带，过渡自然）
     -- 边界墙（R12 根因修复：后墙外移 22.5→29，给相机留 space）
-    WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, { 0.42, 0.46, 0.38 })
+    -- D2 调色：青绿清幽贴桃林远景雾带
+    WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, { 0.50, 0.56, 0.46 })
+
+    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发/光柱原位不动） ==========
+    -- 守桃老人屋 → 真实老屋（碰撞盒 5×2.4×4.5 保留，视觉贴地覆盖盒体）
+    SwapToProp(scene_, GetNodes(scene_, { "OldManHouse", "OldManHouseRoof" }),
+        "OldManHouse_Visual", "old_house", Vector3(-4, 0, -14), { x = 5.2, y = 3.3, z = 5.2 }, 15)
+    -- 井 → 真实石井（井栏+木架辘轳；碰撞圆柱保留）
+    SwapToProp(scene_, GetNodes(scene_, { "Well", "WellFrame" }),
+        "Well_Visual", "well", Vector3(-2, 0, 10), 1.9, 30)
+    -- 桃树×3 → 真实桃树（按白模缩放比例换算：目标高 ≈ 1.65×原 scale）
+    local taoTrees = {
+        { name = "TaoA", pos = Vector3(7, 0, 15), s = 2.6, yaw = 40 },
+        { name = "TaoB", pos = Vector3(6, 0, 4), s = 2.2, yaw = 130 },
+        { name = "TaoC", pos = Vector3(-3, 0, -19), s = 2.4, yaw = 250 },
+    }
+    for _, t in ipairs(taoTrees) do
+        SwapToProp(scene_,
+            GetNodes(scene_, { t.name .. "_Trunk", t.name .. "_Canopy", t.name .. "_Canopy2" }),
+            t.name .. "_Visual", "peach_tree", t.pos, t.s, t.yaw)
+    end
+    -- 望夫崖 → 真实崖壁（保留斜坡/崖顶碰撞；CliffMarker 白模球一并剥视觉，整组归真实崖壁）
+    SwapToProp(scene_, GetNodes(scene_, { "CliffRamp", "CliffTop", "CliffMarker" }),
+        "Cliff_Visual", "cliff", Vector3(6, 0, -15), 4.5, -10)
+    -- 三朵桃花 → 真实桃花丛（触发点原位不动；wood 视觉移到屋前避让老屋模型）
+    DressBlossom(scene_:GetChild("Blossom_wood", true), { x = -5.0, z = -10.8 }, 0, 60)
+    DressBlossom(scene_:GetChild("Blossom_fire", true), { x = 6, z = -13.6 }, 4.0, 200)
+    DressBlossom(scene_:GetChild("Blossom_water", true), { x = -0.9, z = 10.9 }, 0, 300)
 
     -- 出生点（入口）
     return Vector3(0, 0.1, 19)
@@ -377,8 +492,8 @@ end
 --- ============================================================================
 function BuildLuoShuiYinShan(root)
     local scene_ = root
-    -- 地面：暗色石板
-    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.32, 0.32, 0.38 })
+    -- 地面：冷雾夜色（D2 调色偏青蓝，贴阴山远景雾带 0.46/0.50/0.56）
+    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.26, 0.29, 0.36 })
 
     -- 小镇（几座高低错落的盒屋）
     WhiteBox.Box(scene_, "TownHouse1", Vector3(-4, 1.0, -12), Vector3(4, 2.0, 4), { 0.40, 0.36, 0.40 })
@@ -457,9 +572,59 @@ function BuildLuoShuiYinShan(root)
     WhiteBox.BlossomMarker(scene_, Vector3(0, 0.6, -2), "metal", { 0.82, 0.82, 0.86 })
 
     -- 边界墙（R12 根因修复：后墙外移 22.5→29，给相机留 space）
-    -- D1：冷灰青贴洛水阴山远景雾色
-    local wallRgb = { 0.30, 0.32, 0.38 }
+    -- D1：冷灰青贴洛水阴山远景雾色；D2：冷雾夜色加深
+    local wallRgb = { 0.24, 0.27, 0.34 }
     WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, wallRgb)
+
+    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发/光柱原位不动） ==========
+    -- 小镇民居×5+屋棚 → 真实山镇民居（非等比对齐原白模盒体尺寸；朝向各异）
+    local townHouses = {
+        { name = "TownHouse1", pos = Vector3(-4, 0, -12), s = { x = 4.0, y = 2.3, z = 4.0 }, yaw = 10 },
+        { name = "TownHouse2", pos = Vector3(2, 0, -4), s = { x = 4.0, y = 3.0, z = 4.0 }, yaw = 100 },
+        { name = "TownHouse3", pos = Vector3(-3, 0, 8), s = { x = 4.5, y = 1.9, z = 4.0 }, yaw = 190 },
+        { name = "TownHouse4", pos = Vector3(5.2, 0, -14), s = { x = 3.4, y = 3.6, z = 3.6 }, yaw = 260, roof = "TownHouse4Roof" },
+        { name = "TownHouse5", pos = Vector3(-5.6, 0, -2), s = { x = 3.2, y = 2.6, z = 3.4 }, yaw = 55 },
+        { name = "TownShed", pos = Vector3(5.4, 0, 4), s = { x = 3.6, y = 1.5, z = 2.8 }, yaw = 330, roof = "TownShedRoof" },
+    }
+    for _, h in ipairs(townHouses) do
+        local stripNames = { h.name }
+        if h.roof ~= nil then
+            table.insert(stripNames, h.roof)
+        end
+        SwapToProp(scene_, GetNodes(scene_, stripNames),
+            h.name .. "_Visual", "town_house", h.pos, h.s, h.yaw)
+    end
+    -- 山泉井 → 真实泉井（石栏+清泉；Beacon_spring 光柱保留）
+    SwapToProp(scene_,
+        GetNodes(scene_, { "SpringWell", "SpringWater", "SpringFrame", "SpringPostL", "SpringPostR" }),
+        "SpringWell_Visual", "spring_well", Vector3(-5.2, 0, 14), 2.1, 20)
+    -- 无面鬼石台 → 真实巨石（非等比压扁：顶面 ≈0.6 对齐原圆柱碰撞顶/无面鬼坐位）
+    SwapToProp(scene_, GetNodes(scene_, { "GhostStone" }),
+        "GhostStone_Visual", "rock", Vector3(3.5, 0, 16), { x = 4.4, y = 0.6, z = 4.4 }, 25)
+    -- 碎石×9 → 真实岩石（小尺寸点缀）
+    for i = 1, 9 do
+        local rockName = "Rock" .. i
+        ---@type Node|nil
+        local rockNode = scene_:GetChild(rockName, true)
+        if rockNode ~= nil then
+            local rp = rockNode.position
+            local dia = 0.5 + (i % 2) * 0.2
+            SwapToProp(scene_, { rockNode }, rockName .. "_Visual", "rock",
+                Vector3(rp.x, 0, rp.z), dia * 1.1, i * 40)
+        end
+    end
+    -- 矿灯×3 → 真实灯柱（暖灯点光效果由 unlit 灯罩贴图自带；Beacon 光柱保留）
+    for i = 1, 3 do
+        local mp = mineLamps[i]
+        SwapToProp(scene_, GetNodes(scene_, { "MineLampPost" .. i, "MineLamp" .. i }),
+            "MineLamp_Visual_" .. i, "lamp_post",
+            Vector3(mp.x, 0, mp.z), 1.3, i * 90)
+    end
+    -- 三朵桃花 → 真实桃花丛（触发点原位不动；视觉避让建筑/岩石/石台中心）
+    DressBlossom(scene_:GetChild("Blossom_earth", true), { x = -4.0, z = -9.6 }, 0, 120)
+    -- water 视觉立石台前缘地面（触发点台心原位不动；台顶已立无面鬼，视觉不挤台顶）
+    DressBlossom(scene_:GetChild("Blossom_water", true), { x = 3.5, z = 13.2 }, 0, 240)
+    DressBlossom(scene_:GetChild("Blossom_metal", true), { x = 0.8, z = -2.6 }, 0, 0)
 
     -- 出生点
     return Vector3(0, 0.1, 19)

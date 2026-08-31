@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<material>
+	<technique name="Techniques/PBR/PBRDiffNormal.xml" quality="0" loddistance="0" />
+	<texture unit="diffuse" name="model/6b69ee99a1ff4efda91db3de3d503485/Textures/6b69ee99a1ff4efda91db3de3d503485_00_D.jpg" />
+	<texture unit="normal" name="model/6b69ee99a1ff4efda91db3de3d503485/Textures/6b69ee99a1ff4efda91db3de3d503485_00_N.jpg" />
+	<parameter name="MatDiffColor" value="1 1 1 1" />
+	<parameter name="Metallic" value="0" />
+	<parameter name="Roughness" value="0.9" />
+</material>
