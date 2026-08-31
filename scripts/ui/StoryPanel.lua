@@ -13,7 +13,8 @@ StoryPanel.MIN_HEIGHT = "28%"
 StoryPanel.BOTTOM = "3%"
 StoryPanel.PADDING = 20
 StoryPanel.RADIUS = 16
-StoryPanel.BG = { 32, 26, 20, 205 }
+-- ③ 底条降透明：alpha 205→110，让水墨画面透出（文字加细描边保可读，见 DialogueUI）
+StoryPanel.BG = { 32, 26, 20, 110 }
 StoryPanel.BORDER = { 210, 176, 128, 90 }
 StoryPanel.NAME_SIZE = 16
 StoryPanel.LINE_SIZE = 24

@@ -49,6 +49,44 @@ local MAX_SEEK_ATTEMPTS = 3
 local FREEZE_GAP = 1.5
 local MAX_FREEZE_RECOVERIES = 3
 
+-- 字幕排版（收尾小修 ①）：竖屏约 13 字/行，限 3 行 → 单页 ≤ 39 字；
+-- 超长 cue 按标点拆页轮播，每页展示 CAPTION_PAGE_SPAN 秒，整句最多展示 VISIBLE_SPAN 秒
+local CAPTION_CHARS_PER_PAGE = 39
+local CAPTION_PAGE_SPAN = 3.5
+local CAPTION_VISIBLE_SPAN = 7.0
+
+--- 把字幕文本拆成 ≤ CAPTION_CHARS_PER_PAGE 字的页（优先标点处断开）
+---@param text string
+---@return string[]
+local function splitCaption(text)
+    if text == nil or text == "" then return {} end
+    local chars = {}
+    for _, c in utf8.codes(text) do
+        chars[#chars + 1] = utf8.char(c)
+    end
+    local pages = {}
+    local i = 1
+    while i <= #chars do
+        local last = math.min(#chars, i + CAPTION_CHARS_PER_PAGE - 1)
+        local cut = last
+        if last < #chars then
+            -- 在页内靠后位置找最后一个标点断开（后半页优先，避免页过短）
+            for j = last, math.max(i + 12, i), -1 do
+                local ch = chars[j]
+                if ch == "，" or ch == "。" or ch == "；" or ch == "！" or ch == "？"
+                    or ch == "—" or ch == "…" or ch == "、" then
+                    cut = j
+                    break
+                end
+            end
+        end
+        pages[#pages + 1] = table.concat(chars, "", i, cut)
+        i = cut + 1
+    end
+    if #pages == 0 then pages[1] = text end
+    return pages
+end
+
 ---@type table|nil
 local session_ = nil
 ---@type table|nil
@@ -296,16 +334,33 @@ local function hideMask()
     end
 end
 
+--- 字幕轮播：长 cue 拆页，每页 ≤3 行；整句最多展示 CAPTION_VISIBLE_SPAN 秒（与人声旁白大致同步）
+---@param time number
 local function updateCaption(time)
     if session_ == nil or session_.captionLabel_ == nil then return end
     local videoId = session_.paragraph and session_.paragraph.video
-    local text = VideoSubtitles.CueAt(videoId, time) or ""
+    local text = VideoSubtitles.CueAt(videoId, time)
+    if text == nil or time >= session_.captionStart_ + CAPTION_VISIBLE_SPAN then
+        text = ""
+    end
     if session_.captionText_ ~= text then
         session_.captionText_ = text
-        session_.captionLabel_:SetText(text)
-        if session_.captionBar_ ~= nil then
-            session_.captionBar_:SetVisible(text ~= "")
-        end
+        session_.captionStart_ = time
+        session_.captionPages_ = splitCaption(text)
+        session_.captionPageIndex_ = 1
+    end
+    local pages = session_.captionPages_ or {}
+    local idx = 1
+    if #pages > 1 then
+        idx = math.min(#pages,
+            1 + math.floor((time - session_.captionStart_) / CAPTION_PAGE_SPAN))
+    end
+    if idx ~= session_.captionShownIndex_ then
+        session_.captionShownIndex_ = idx
+        session_.captionLabel_:SetText(pages[idx] or "")
+    end
+    if session_.captionBar_ ~= nil then
+        session_.captionBar_:SetVisible(text ~= "")
     end
 end
 
@@ -651,6 +706,11 @@ function MediaPlayer.Play(paragraph, data)
         recoveryConfirmed = false,
         completionSent = false,
         failed = false,
+        -- 字幕轮播初始状态（①）
+        captionStart_ = -100,
+        captionPages_ = {},
+        captionPageIndex_ = 1,
+        captionShownIndex_ = nil,
     }
 
     local mediaPos = data.mediaPos
@@ -770,11 +830,12 @@ function MediaPlayer.Play(paragraph, data)
     local chapterTitle = (pack and pack.title) or ""
     local titleChip = UI.Panel {
         position = "absolute",
-        top = 18,
         left = 18,
         right = 18,
         padding = { 8, 12 },
-        backgroundColor = { 32, 26, 20, 128 },
+        -- ③ 顶条降透明：alpha 128→100，让水墨画面透出；下移 18→26 更轻
+        top = 26,
+        backgroundColor = { 32, 26, 20, 100 },
         borderRadius = 10,
         pointerEvents = "none",
         zIndex = 40,
@@ -790,24 +851,26 @@ function MediaPlayer.Play(paragraph, data)
             },
         },
     }
+    -- ① 字幕固定最多 3 行（拆页保证不超），行高 1.4、≥24 号、暖白 + 细描边保持
     local captionLabel = UI.Label {
         text = "",
         fontSize = 24,
         fontColor = { 255, 248, 236, 255 },
         width = "100%",
-        maxLines = 2,
+        maxLines = 3,
         lineHeight = 1.4,
         whiteSpace = "normal",
         textAlign = "center",
         textStroke = { width = 1.2, color = { 16, 10, 8, 210 } },
     }
+    -- ③ 底条降透明 alpha 128→100；底部 8%→11% 抬高不贴死
     local captionBar = UI.Panel {
         position = "absolute",
         left = "4%",
         right = "4%",
-        bottom = "8%",
+        bottom = "11%",
         padding = { 12, 14 },
-        backgroundColor = { 32, 26, 20, 128 },
+        backgroundColor = { 32, 26, 20, 100 },
         borderRadius = 12,
         pointerEvents = "none",
         zIndex = 40,

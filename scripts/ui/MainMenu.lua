@@ -76,7 +76,6 @@ function MainMenu.Create(uiRoot)
         id = "mainMenu",
         position = "absolute",
         top = 0, left = 0, right = 0, bottom = 0,
-        backgroundImage = "image/立绘/素女.jpg",
         zIndex = 96,
         visible = false,
     }
@@ -156,6 +155,8 @@ function MainMenu.Create(uiRoot)
     root_:AddChild(titleBlock)
     root_:AddChild(actions)
     uiRoot:AddChild(root_)
+    -- 封面素女立绘全屏底：挂树之后设 backgroundImage（创建/挂树前设置会丢失）
+    root_:SetBackgroundImage("image/立绘/素女.jpg")
     print("[MainMenu] 已创建主菜单")
     return true
 end

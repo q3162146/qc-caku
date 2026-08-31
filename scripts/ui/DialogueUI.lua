@@ -7,7 +7,6 @@ local UI = require "urhox-libs/UI"
 local InputManager = require "game.InputManager"
 local GameAudio = require "audio.GameAudio"
 local VoiceMap = require "config.VoiceMap"
-local SceneManager = require "game.SceneManager"
 local StoryPanel = require "ui.StoryPanel"
 
 local DialogueUI = {}
@@ -19,12 +18,8 @@ local state_ = nil
 ---@type Panel|nil
 local layer_ = nil
 
-local SCENE_BG = {
-    chaoyang_gukou = "image/立绘/场景_朝阳谷口.png",
-    luoshui_yinshan = "image/立绘/场景_洛水阴山.png",
-    gunei_taolin = "image/立绘/场景_谷内桃林.png",
-    gu_nei_taolin = "image/立绘/场景_谷内桃林.png",
-}
+-- ② 三选整屏应景底：直接透出 3D 场景（D1 Skybox = 水墨全景），不再铺静态图。
+--    sceneBackdrop 保留：无 3D 场景的兜底环境（如纯 UI 调试）不使用。
 
 local NPC_PORTRAIT = {
     ["守桃老人"] = "image/立绘/守桃老人.jpg",
@@ -64,15 +59,6 @@ local function mountRoot(panel)
     layer:ClearChildren()
     layer:AddChild(panel)
     layer:SetVisible(true)
-end
-
----@return string
-local function sceneBackdrop()
-    local sceneId = SceneManager.GetCurrentScene and SceneManager.GetCurrentScene() or nil
-    if sceneId ~= nil and SCENE_BG[sceneId] ~= nil then
-        return SCENE_BG[sceneId]
-    end
-    return "image/立绘/场景_朝阳谷口.png"
 end
 
 ---@return string
@@ -192,6 +178,7 @@ function RenderText()
             lineHeight = 1.4,
             whiteSpace = "normal",
             marginTop = 8,
+            textStroke = { width = 0.8, color = { 16, 10, 8, 160 } },
         },
         UI.Button {
             text = hasMore and "下一步" or "下一步",
@@ -253,6 +240,7 @@ function RenderChoice()
             maxLines = 2,
             lineHeight = 1.4,
             whiteSpace = "normal",
+            textStroke = { width = 0.8, color = { 16, 10, 8, 160 } },
         },
     }
     local order = spec.choiceOrder
@@ -289,29 +277,43 @@ function RenderChoice()
     end
 
     local shell = StoryPanel.Wrap(inner)
-    mountRoot(UI.Panel {
+    -- ② 三选整屏应景底：不再铺静态图，直接透出 3D 场景（D1 Skybox 即水墨全景）。
+    --    panel 不设任何背景色，仅叠线性渐变压暗保证选项可读。
+    local portrait = UI.Panel {
         position = "absolute",
-        top = 0, left = 0, right = 0, bottom = 0,
-        backgroundImage = sceneBackdrop(),
-        children = {
-            UI.Panel {
-                position = "absolute",
-                top = 0, left = 0, right = 0, bottom = 0,
-                backgroundColor = { 12, 8, 6, 110 },
-                pointerEvents = "none",
-            },
-            UI.Panel {
-                position = "absolute",
-                right = 0,
-                top = "12%",
-                width = "42%",
-                height = "58%",
-                backgroundImage = npcPortrait(),
-                pointerEvents = "none",
-            },
-            shell,
+        right = 0,
+        top = "12%",
+        width = "42%",
+        height = "58%",
+        pointerEvents = "none",
+    }
+    local dimmer = UI.Panel {
+        position = "absolute",
+        top = 0, left = 0,
+        width = "100%",
+        height = "100%",
+        -- ② 压暗改线性渐变：上部透出整屏水墨，下部加深保证选项可读可点
+        backgroundGradient = {
+            type = "linear",
+            direction = "to-bottom",
+            from = { 12, 8, 6, 30 },
+            to = { 12, 8, 6, 150 },
         },
-    })
+        pointerEvents = "none",
+    }
+    local panel = UI.Panel {
+        position = "absolute",
+        top = 0, left = 0,
+        width = "100%",
+        height = "100%",
+        pointerEvents = "box-none",
+    }
+    panel:AddChild(dimmer)
+    panel:AddChild(portrait)
+    panel:AddChild(shell)
+    mountRoot(panel)
+    -- 右侧立绘：挂树后设图（NPC 辨识保留）
+    portrait:SetBackgroundImage(npcPortrait())
 end
 
 ---@param choiceKey string|nil

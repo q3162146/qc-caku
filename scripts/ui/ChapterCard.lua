@@ -8,34 +8,35 @@ local GameAudio = require "audio.GameAudio"
 
 local ChapterCard = {}
 
+-- ④ 章节卡整屏应景底改用 D1 水墨全景（场景_*.png 为白模氛围截图，已弃用）
 local CARDS = {
     ch0 = {
         image = "image/章节卡/ch0_桃花谷口.png",
-        scene = "image/立绘/场景_朝阳谷口.png",
+        scene = "image/backdrop_chaoyang_20260831015902.png",
         title = "楔子 · 桃花谷口",
         seal = "木",
     },
     ch1 = {
         image = "image/章节卡/ch1_春信至.png",
-        scene = "image/立绘/场景_朝阳谷口.png",
+        scene = "image/backdrop_chaoyang_20260831015902.png",
         title = "收集 · 朝阳之谷",
         seal = "火",
     },
     ch2 = {
         image = "image/章节卡/ch4_洛水阴.png",
-        scene = "image/立绘/场景_洛水阴山.png",
+        scene = "image/backdrop_yinshan_20260831015900.png",
         title = "第四回 · 洛水阴，无面泪",
         seal = "水",
     },
     ch3 = {
         image = "image/章节卡/ch5_记忆印.png",
-        scene = "image/立绘/场景_洛水阴山.png",
+        scene = "image/backdrop_yinshan_20260831015900.png",
         title = "第五回 · 记忆印，六艺寻",
         seal = "金",
     },
     ch4 = {
         image = "image/章节卡/ch6_无涕桃.png",
-        scene = "image/立绘/场景_朝阳谷口.png",
+        scene = "image/backdrop_chaoyang_20260831015902.png",
         title = "尾声 · 无涕桃，人面何处",
         seal = "人面不知何处去，桃花依旧笑春风",
     },
