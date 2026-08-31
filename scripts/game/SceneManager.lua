@@ -11,6 +11,7 @@
 -- ============================================================================
 
 local WhiteBox = require "game.WhiteBox"
+local Backdrop = require "game.Backdrop"
 
 local SceneManager = {}
 
@@ -68,38 +69,50 @@ local currentScene_ = ""
 local onSceneLoaded_ = nil
 
 --- 场景氛围配置（雾色/环境光/主光，随场景切换）
+-- D 阶段 D1：远景为水墨全景 cubemap Skybox（见 game/Backdrop.lua），
+--   雾色与 skyHorizon 取远景画雾带同色系，边界墙/地面与远景地平线自然过渡；
+--   skyZenith/skyHorizon 同时作 cubemap 加载失败时渐变天空回退配色。
 local SCENE_MOOD = {
     chaoyang_gukou = {
         name = "朝阳谷口",
         ambient = Color(0.42, 0.40, 0.42),
-        fog = Color(0.92, 0.85, 0.78),
+        fog = Color(0.90, 0.84, 0.74),
         fogStart = 30.0,
         fogEnd = 120.0,
         fogDensity = 1.0,
         lightColor = Color(0.95, 0.90, 0.82),
         lightBrightness = 1.05,
+        -- 回退渐变天空配色（暖金晨空，贴朝阳谷口远景画）
+        skyZenith = Color(0.55, 0.48, 0.38),
+        skyHorizon = Color(0.90, 0.84, 0.74),
     },
     gu_nei_taolin = {
         name = "谷内桃林",
         ambient = Color(0.36, 0.38, 0.36),
-        fog = Color(0.80, 0.82, 0.74),
+        fog = Color(0.80, 0.83, 0.76),
         fogStart = 25.0,
         fogEnd = 90.0,
         fogDensity = 1.0,
         lightColor = Color(0.82, 0.88, 0.78),
         lightBrightness = 0.92,
+        -- 回退渐变天空配色（清幽青绿）
+        skyZenith = Color(0.42, 0.52, 0.46),
+        skyHorizon = Color(0.80, 0.83, 0.76),
     },
     luoshui_yinshan = {
         name = "洛水阴山",
         ambient = Color(0.22, 0.24, 0.32),
-        fog = Color(0.36, 0.40, 0.50),
+        fog = Color(0.46, 0.50, 0.56),
         -- 第三人称相机约 6.8m，fogStart 须大于相机距离，否则整屏被雾吃掉
         fogStart = 18.0,
-        fogEnd = 70.0,
+        fogEnd = 80.0,
         fogDensity = 1.2,
         heightFog = false,
         lightColor = Color(0.62, 0.68, 0.84),
         lightBrightness = 0.62,
+        -- 回退渐变天空配色（阴山冷雾青灰）
+        skyZenith = Color(0.16, 0.18, 0.24),
+        skyHorizon = Color(0.46, 0.50, 0.56),
     },
 }
 
@@ -145,6 +158,9 @@ function SceneManager.LoadScene(sceneName)
 
     -- 应用氛围
     ApplyMood(SCENE_MOOD[sceneName])
+
+    -- D1 远景：水墨全景 cubemap Skybox（不随 SceneRoot 销毁；失败回退渐变天空）
+    Backdrop.Apply(scene_, sceneName, SCENE_MOOD[sceneName])
 
     -- 场景名回传（用于顶部横幅等）
     if onSceneLoaded_ ~= nil then
@@ -348,9 +364,9 @@ function BuildGuNeiTaoLin(root)
     WhiteBox.BlossomMarker(scene_, Vector3(6, 0.6, -15), "fire", { 0.90, 0.35, 0.30 })
     WhiteBox.BlossomMarker(scene_, Vector3(-2, 0.6, 10), "water", { 0.34, 0.55, 0.85 })
 
-    -- 边界墙
+    -- 边界墙（D1：青绿灰贴谷内桃林远景雾带，过渡自然）
     -- 边界墙（R12 根因修复：后墙外移 22.5→29，给相机留 space）
-    WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, { 0.40, 0.40, 0.32 })
+    WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, { 0.42, 0.46, 0.38 })
 
     -- 出生点（入口）
     return Vector3(0, 0.1, 19)
@@ -441,7 +457,8 @@ function BuildLuoShuiYinShan(root)
     WhiteBox.BlossomMarker(scene_, Vector3(0, 0.6, -2), "metal", { 0.82, 0.82, 0.86 })
 
     -- 边界墙（R12 根因修复：后墙外移 22.5→29，给相机留 space）
-    local wallRgb = { 0.24, 0.24, 0.30 }
+    -- D1：冷灰青贴洛水阴山远景雾色
+    local wallRgb = { 0.30, 0.32, 0.38 }
     WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, wallRgb)
 
     -- 出生点

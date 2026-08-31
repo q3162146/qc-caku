@@ -41,6 +41,9 @@ local MOUSE_SENSITIVITY = 0.15   -- 鼠标灵敏度（度/像素）
 local PITCH_LIMIT = 80.0
 local PICKUP_RADIUS = 1.6        -- 走近拾取/交互半径（米；真机摇杆走近需略大于白模球体）
 
+-- ⚠️ D 阶段真机测试临时提速（跑图/采集/触发用）——正式发布前必须改回 1.0！
+local DEBUG_MOVE_SPEED_MULTIPLIER = 4.0
+
 -- 素女 3D 模型（create_3d_asset 生成；rig 服务侧不可绑时回退静态 MDL，视觉为静态网格随节点整体转向/移动）
 -- 模型包围盒（model-info 实测）：Size ≈ (0.42, 1.0, 0.47)，中心居中（Min Y ≈ -0.5）
 -- 用虚拟路径加载 Model/Material（不依赖 uuid 路由；材质 xml 内贴图也已改虚拟路径）
@@ -116,6 +119,16 @@ function PlayerController.Create(scene)
     character_:SetEnableWalkMode(true)      -- 默认步行，Shift 跑步
     character_.autoRotateToMoveDir = true   -- 探索模式：面向移动方向
     character_.rotationSpeed = 1440.0
+
+    -- ⚠️ D 阶段真机测试临时提速（发布前恢复：DEBUG_MOVE_SPEED_MULTIPLIER = 1.0）
+    if DEBUG_MOVE_SPEED_MULTIPLIER ~= 1.0 then
+        local w = character_.walkSpeed * DEBUG_MOVE_SPEED_MULTIPLIER
+        local r = character_.runSpeed * DEBUG_MOVE_SPEED_MULTIPLIER
+        character_:SetWalkSpeed(w)
+        character_:SetRunSpeed(r)
+        print("[PlayerController] 临时提速 x" .. DEBUG_MOVE_SPEED_MULTIPLIER
+            .. " walk=" .. w .. " run=" .. r)
+    end
 
     -- 第三人称相机
     -- R12（2026-08-22）：拉远 + 抬升 + 加宽视角，缩小玩家占屏（真机复核占屏 1/4~1/3 → 修复）
