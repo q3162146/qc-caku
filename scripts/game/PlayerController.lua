@@ -44,12 +44,18 @@ local PICKUP_RADIUS = 1.6        -- 走近拾取/交互半径（米；真机摇�
 -- ⚠️ D 阶段真机测试临时提速（跑图/采集/触发用）——正式发布前必须改回 1.0！
 local DEBUG_MOVE_SPEED_MULTIPLIER = 4.0
 
--- 素女 3D 模型（create_3d_asset 生成；rig 服务侧不可绑时回退静态 MDL，视觉为静态网格随节点整体转向/移动）
--- 模型包围盒（model-info 实测）：Size ≈ (0.42, 1.0, 0.47)，中心居中（Min Y ≈ -0.5）
--- 用虚拟路径加载 Model/Material（不依赖 uuid 路由；材质 xml 内贴图也已改虚拟路径）
+-- 素女 3D 模型（D3 角色动画：官方库带骨骼古风女性，41 骨 Tripo Rig 标准骨架，
+--   可自动重定向官方 DefaultMale 人形动画（idle/walk/run），FSM 驱动）
+local SUNU_RIG_MODEL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Meshes/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064.mdl"
+local SUNU_RIG_MATERIAL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Materials/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064_00_tripo_material_a7ec7f07-66d8-4f3f-8f49-69d441544492.xml"
+local SUNU_FSM_FILE = "FSM/Sunu.fsm"
+-- 旧静态素女（rig 模型加载失败时的回退视觉，保玩法不破）
 local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619.mdl"
 local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
 local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉匹配
+
+---@type AnimationStateMachine|nil
+local sunuFsm_ = nil
 
 --- 创建玩家与相机
 ---@param scene Scene
@@ -63,35 +69,76 @@ function PlayerController.Create(scene)
     -- 玩家节点
     playerNode_ = scene:CreateChild("Player")
 
-    -- 视觉：素女 3D 模型（create_3d_asset 生成，texture 版静态 MDL；
-    --   rig 服务侧 biped 可绑性检查两次不通过，回退静态网格，随节点整体转向/移动）
-    --   虚拟路径加载 Model + Material；加载失败回退原白模球，保证玩法不破
+    -- 视觉：素女 3D 模型。D3 优先带骨骼版（AnimatedModel + FSM 播 idle/walk/run），
+    --   加载失败回退旧静态网格（随节点整体转向/移动），再失败回退白模球，保玩法不破
     local modelNode = playerNode_:CreateChild("ModelNode")
-    local sunuModel = cache:GetResource("Model", SUNU_MODEL)
-    local sunuMat = cache:GetResource("Material", SUNU_MATERIAL)
-    if sunuModel ~= nil then
-        local bodyModel = modelNode:CreateComponent("StaticModel")
-        bodyModel:SetModel(sunuModel)
-        if sunuMat ~= nil then
-            bodyModel:SetMaterial(sunuMat)
+    local rigModel = cache:GetResource("Model", SUNU_RIG_MODEL)
+    local rigMat = cache:GetResource("Material", SUNU_RIG_MATERIAL)
+    local rigLoaded = false
+    if rigModel ~= nil and rigModel:GetSkeleton() ~= nil
+        and rigModel:GetSkeleton():GetNumBones() > 0 then
+        ---@type AnimatedModel
+        local bodyModel = modelNode:CreateComponent("AnimatedModel")
+        bodyModel:SetModel(rigModel)
+        if rigMat ~= nil then
+            bodyModel:SetMaterial(rigMat)
         end
         bodyModel.castShadows = true
-        -- 模型包围盒 ≈ 1.0m 高且中心居中（Min Y ≈ -0.5）→ 等比缩放到目标身高，
-        -- 并上移半身高使脚底落地（与胶囊 1.8 对齐）
+        -- rig 包围盒高 ≈1.0 且 Min Y=0 → 等比缩放即脚底落地
         modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
-        modelNode.position = Vector3(0, SUNU_HEIGHT / 2, 0)
-        -- 网格视觉正面在 +X，节点前向为 +Z（CharacterComponent 面向移动方向）→ 绕 Y +90°，
-        -- 行走时相机看到背影（第三人称惯例，截图实测）
-        modelNode:SetRotation(Quaternion(90, Vector3.UP))
-        print("[PlayerController] 素女模型已加载: " .. SUNU_MODEL)
+        -- rig 网格视觉正面在 -Z（D3 截图实测：+90° 呈左侧脸 → 反推正面 -Z）；
+        -- 节点前向 +Z，绕 Y 180° 使正面朝前、第三人称相机看背影
+        modelNode:SetRotation(Quaternion(180, Vector3.UP))
+        -- 重定向防飘移：禁用 Root/Hip（3D 角色管线标准做法）
+        local skel = bodyModel:GetSkeleton()
+        if skel ~= nil then
+            local rootBone = skel:GetBone("Root")
+            if rootBone ~= nil then rootBone.animated = false end
+            local hipBone = skel:GetBone("Hip")
+            if hipBone ~= nil then hipBone.animated = false end
+        end
+        -- 动画状态机：idle(0)/walk(2)/run(5) BlendSpace，按 moveSpeed 混合
+        modelNode:GetOrCreateComponent("AnimationController")
+        local fsm = modelNode:CreateComponent("AnimationStateMachine")
+        ---@type JSONFile|nil
+        local fsmFile = cache:GetResource("JSONFile", SUNU_FSM_FILE)
+        if fsmFile ~= nil then
+            fsm:LoadFromJSONFile(fsmFile)
+            fsm:Start()
+            sunuFsm_ = fsm
+            print("[PlayerController] 素女动画 FSM 已启动: " .. SUNU_FSM_FILE)
+        else
+            print("[PlayerController] 警告：FSM 文件加载失败，模型静态: " .. SUNU_FSM_FILE)
+        end
+        rigLoaded = true
+        print("[PlayerController] 素女骨骼模型已加载: " .. SUNU_RIG_MODEL)
     else
-        print("[PlayerController] 警告：素女模型加载失败，回退白模球")
-        local bodyModel = modelNode:CreateComponent("StaticModel")
-        bodyModel:SetModel(cache:GetResource("Model", "Models/Sphere.mdl"))
-        bodyModel:SetMaterial(WhiteBoxCreatePlayerMaterial())
-        bodyModel.castShadows = true
-        modelNode.scale = Vector3(0.45, 0.6, 0.45)
-        modelNode.position = Vector3(0, 0.65, 0)
+        print("[PlayerController] 警告：带骨骼素女加载失败，回退静态模型")
+    end
+
+    if not rigLoaded then
+        local sunuModel = cache:GetResource("Model", SUNU_MODEL)
+        local sunuMat = cache:GetResource("Material", SUNU_MATERIAL)
+        if sunuModel ~= nil then
+            local bodyModel = modelNode:CreateComponent("StaticModel")
+            bodyModel:SetModel(sunuModel)
+            if sunuMat ~= nil then
+                bodyModel:SetMaterial(sunuMat)
+            end
+            bodyModel.castShadows = true
+            -- 静态版包围盒 ≈1.0m 高且中心居中（Min Y ≈ -0.5）→ 上移半身高使脚底落地
+            modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
+            modelNode.position = Vector3(0, SUNU_HEIGHT / 2, 0)
+            modelNode:SetRotation(Quaternion(90, Vector3.UP))
+        else
+            print("[PlayerController] 警告：素女模型加载失败，回退白模球")
+            local bodyModel = modelNode:CreateComponent("StaticModel")
+            bodyModel:SetModel(cache:GetResource("Model", "Models/Sphere.mdl"))
+            bodyModel:SetMaterial(WhiteBoxCreatePlayerMaterial())
+            bodyModel.castShadows = true
+            modelNode.scale = Vector3(0.45, 0.6, 0.45)
+            modelNode.position = Vector3(0, 0.65, 0)
+        end
     end
 
     -- 刚体（运动学角色：KCC 驱动，RigidBody 只负责碰撞事件）
@@ -273,11 +320,18 @@ function PlayerController.ClearMovement()
     c:Set(CTRL_RUN, false)
 end
 
---- PostUpdate：更新第三人称相机
+--- PostUpdate：更新第三人称相机 + 素女动画 FSM 参数
 ---@param timeStep number
 function PlayerController.PostUpdate(timeStep)
     if playerNode_ ~= nil and tpCamera_ ~= nil then
         tpCamera_:Update(timeStep, playerNode_, yaw_, pitch_)
+    end
+    -- 喂 FSM：实际速度按临时提速倍数归一化，对齐 BlendSpace 点（0 待机/2 走/5 跑）
+    if sunuFsm_ ~= nil and character_ ~= nil then
+        local speed = character_:GetMoveSpeed() / DEBUG_MOVE_SPEED_MULTIPLIER
+        if speed > 5.0 then speed = 5.0 end
+        sunuFsm_:SetFloat("moveSpeed", speed)
+        sunuFsm_:SetBool("isGrounded", character_:IsOnGround())
     end
 end
 

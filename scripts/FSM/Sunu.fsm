@@ -1,0 +1,29 @@
+{
+    "name": "SunuFSM",
+    "defaultBlendTime": 0.2,
+    "_animationPaths": {
+        "uuid://HIPCWSBd61v8PRI972Yksxzh": "站立待机",
+        "uuid://HhyjGZvHN9uF8lRsGnN_J7jc": "向前行走",
+        "uuid://FshxoWge4mzIJ-wmBu0GK6Vs": "向前跑步"
+    },
+
+    "parameters": {
+        "moveSpeed": { "type": "float", "default": 0.0, "min": 0.0, "max": 10.0 },
+        "isGrounded": { "type": "bool", "default": true },
+        "jump": { "type": "trigger" }
+    },
+
+    "layers": [
+        {
+            "name": "Base",
+            "defaultState": "Locomotion",
+            "states": {
+                "Locomotion": {
+                    "blendSpace": "FSM/SunuMoveBlend.blendspace",
+                    "loop": true
+                }
+            },
+            "transitions": []
+        }
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "_animationPaths": {
+        "uuid://HIPCWSBd61v8PRI972Yksxzh": "站立待机",
+        "uuid://HhyjGZvHN9uF8lRsGnN_J7jc": "向前行走",
+        "uuid://FshxoWge4mzIJ-wmBu0GK6Vs": "向前跑步"
+    },
+    "type": "BlendSpace1D",
+    "name": "SunuMoveBlend",
+    "parameter": "moveSpeed",
+    "points": [
+        { "value": 0, "animation": "uuid://HIPCWSBd61v8PRI972Yksxzh", "speed": 1.0 },
+        { "value": 2, "animation": "uuid://HhyjGZvHN9uF8lRsGnN_J7jc", "speed": 1.0 },
+        { "value": 5, "animation": "uuid://FshxoWge4mzIJ-wmBu0GK6Vs", "speed": 1.0 }
+    ]
+}
