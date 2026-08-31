@@ -49,6 +49,15 @@ local DEBUG_MOVE_SPEED_MULTIPLIER = 4.0
 local SUNU_RIG_MODEL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Meshes/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064.mdl"
 local SUNU_RIG_MATERIAL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Materials/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064_00_tripo_material_a7ec7f07-66d8-4f3f-8f49-69d441544492.xml"
 local SUNU_FSM_FILE = "FSM/Sunu.fsm"
+-- DWP 下载扩展（把 DownloadResources 等装到 cache；真机/预览按需下载 uuid 动画必需）
+require "urhox-libs.Engine.ResourceCacheExtensions"
+
+-- FSM 引用的官方 DefaultMale 动画（uuid 资源，DWP 按需下载；须先下载再 Load FSM，否则空动画）
+local SUNU_ANIM_URIS = {
+    "uuid://HIPCWSBd61v8PRI972Yksxzh",  -- 站立待机
+    "uuid://HhyjGZvHN9uF8lRsGnN_J7jc",  -- 向前行走
+    "uuid://FshxoWge4mzIJ-wmBu0GK6Vs",  -- 向前跑步
+}
 -- 旧静态素女（rig 模型加载失败时的回退视觉，保玩法不破）
 local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619.mdl"
 local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
@@ -56,6 +65,23 @@ local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉
 
 ---@type AnimationStateMachine|nil
 local sunuFsm_ = nil
+
+--- 启动素女动画 FSM（须在官方动画 uuid 资源就绪后调用，否则空动画）
+---@param modelNode Node
+local function StartSunuFSM(modelNode)
+    modelNode:GetOrCreateComponent("AnimationController")
+    local fsm = modelNode:CreateComponent("AnimationStateMachine")
+    ---@type JSONFile|nil
+    local fsmFile = cache:GetResource("JSONFile", SUNU_FSM_FILE)
+    if fsmFile ~= nil then
+        fsm:LoadFromJSONFile(fsmFile)
+        fsm:Start()
+        sunuFsm_ = fsm
+        print("[PlayerController] 素女动画 FSM 已启动: " .. SUNU_FSM_FILE)
+    else
+        print("[PlayerController] 警告：FSM 文件加载失败，模型静态: " .. SUNU_FSM_FILE)
+    end
+end
 
 --- 创建玩家与相机
 ---@param scene Scene
@@ -97,18 +123,23 @@ function PlayerController.Create(scene)
             local hipBone = skel:GetBone("Hip")
             if hipBone ~= nil then hipBone.animated = false end
         end
-        -- 动画状态机：idle(0)/walk(2)/run(5) BlendSpace，按 moveSpeed 混合
-        modelNode:GetOrCreateComponent("AnimationController")
-        local fsm = modelNode:CreateComponent("AnimationStateMachine")
-        ---@type JSONFile|nil
-        local fsmFile = cache:GetResource("JSONFile", SUNU_FSM_FILE)
-        if fsmFile ~= nil then
-            fsm:LoadFromJSONFile(fsmFile)
-            fsm:Start()
-            sunuFsm_ = fsm
-            print("[PlayerController] 素女动画 FSM 已启动: " .. SUNU_FSM_FILE)
+        -- 动画状态机：idle(0)/walk(2)/run(5) BlendSpace，按 moveSpeed 混合。
+        -- 官方动画为 uuid 远程资源（DWP 按需下载）：先下载就绪再 Load FSM，
+        -- 否则真机上状态机空转无动画；运行时缺 DWP 扩展 API 时直接启动（交由 uuid 路由）。
+        if cache.DownloadResources ~= nil then
+            print("[PlayerController] 素女动画 DWP 预下载中（" .. #SUNU_ANIM_URIS .. " 个）…")
+            cache:DownloadResources(SUNU_ANIM_URIS, function(success, failed)
+                if success then
+                    print("[PlayerController] 素女动画下载完成，启动 FSM")
+                    StartSunuFSM(modelNode)
+                else
+                    print("[PlayerController] 警告：素女动画下载失败 " .. tostring(failed)
+                        .. " 个，模型保持静态")
+                end
+            end)
         else
-            print("[PlayerController] 警告：FSM 文件加载失败，模型静态: " .. SUNU_FSM_FILE)
+            print("[PlayerController] 运行时无 DWP 下载 API，直接启动 FSM")
+            StartSunuFSM(modelNode)
         end
         rigLoaded = true
         print("[PlayerController] 素女骨骼模型已加载: " .. SUNU_RIG_MODEL)
