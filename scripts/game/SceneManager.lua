@@ -13,6 +13,9 @@
 local WhiteBox = require "game.WhiteBox"
 local Backdrop = require "game.Backdrop"
 local SceneProps = require "game.SceneProps"
+local Scenery = require "game.Scenery"
+-- DWP 下载扩展（真机按需下载远程依赖；预热道具模型/材质/贴图减少占位期）
+require "urhox-libs.Engine.ResourceCacheExtensions"
 
 local SceneManager = {}
 
@@ -174,6 +177,45 @@ local SCENE_MOOD = {
     },
 }
 
+--- D2.5-四：真实道具 DWP 预热 + 资产清单诊断
+---   白模道具的 .mdl 为 render-blocking（真机必然在包内），贴图属 DWP 媒体资源
+---   （真机首见先占位后热替换，表现为"帧偏空/白模感"）。场景加载时先发起全部
+---   道具模型/材质/贴图依赖下载，缩短占位空窗；同时打印 manifest 清单便于真机排查。
+local function WarmPropsAsync()
+    ---@type string[]
+    local uris = {}
+    ---@type table<string, boolean>
+    local seen = {}
+    local function AddUri(u)
+        if not seen[u] then
+            seen[u] = true
+            table.insert(uris, u)
+        end
+    end
+    for key, def in pairs(SceneProps.ASSETS) do
+        local inModel = cache.GetResInfo ~= nil and cache:GetResInfo(def.model) ~= nil
+        local inMat = cache.GetResInfo ~= nil and cache:GetResInfo(def.mat) ~= nil
+        print(string.format("[SceneManager] 道具清单 %s: model=%s mat=%s",
+            key, inModel and "在包" or "缺失", inMat and "在包" or "缺失"))
+        AddUri(def.model)
+        AddUri(def.mat)
+        if cache.GetResRefs ~= nil then
+            for _, r in ipairs(cache:GetResRefs({ def.model, def.mat }, true)) do
+                AddUri(r)
+            end
+        end
+    end
+    if cache.DownloadResources == nil then
+        print("[SceneManager] 运行时无 DWP 下载 API，跳过道具预热（交由 uuid 路由）")
+        return
+    end
+    print("[SceneManager] 道具 DWP 预热中（" .. #uris .. " 个依赖）…")
+    cache:DownloadResources(uris, function(success, failed)
+        print("[SceneManager] 道具预热完成: success=" .. tostring(success)
+            .. " failed=" .. tostring(failed))
+    end)
+end
+
 --- 初始化
 ---@param scene Scene
 ---@param player table PlayerController 实例
@@ -224,6 +266,10 @@ function SceneManager.LoadScene(sceneName)
     if onSceneLoaded_ ~= nil then
         onSceneLoaded_(SCENE_MOOD[sceneName].name or sceneName)
     end
+
+    -- D2.5-四：真机道具在位加固——先发起 DWP 预热全部真实道具的模型/材质/贴图
+    -- 依赖，减少真机"先占位白模后热替换"的空窗期；并输出资产清单日志供排查
+    WarmPropsAsync()
 
     -- 构建白模
     local spawn = nil
@@ -294,7 +340,8 @@ end
 function BuildChaoyangGukou(root)
     local scene_ = root
     -- 地面：暖金色（D2 调色贴朝阳远景画雾带 0.90/0.84/0.74）
-    WhiteBox.Ground(scene_, "Ground", 18, 52, { 0.86, 0.76, 0.58 })
+    -- D2.5：地面铺满边界墙脚（17×64 = 2×8.5/2×32），消除原 18×52 与墙间的地缝
+    WhiteBox.Ground(scene_, "Ground", 17, 64, { 0.86, 0.76, 0.58 })
 
     -- 无涕桃（中央，略大）
     WhiteBox.PeachTree(scene_, "WutiTao", Vector3(0, 0, 0), 1.6)
@@ -417,6 +464,31 @@ function BuildChaoyangGukou(root)
             { x = spot.pos.x, z = spot.pos.z }, 0, spot.yaw)
     end
 
+    -- ========== D2.5 场景补全：地面真实化 + 撒点 + 地平线雾带 + 氛围散点 ==========
+    -- 散点全部纯视觉不带碰撞；坐标避开交互点/触发点/主路（不改任何坐标与触发）
+    Scenery.Build(scene_, "chaoyang_gukou", { halfW = 8.5, halfD = 32 }, {
+        -- 谷缘桃树丛（贴边，填充空旷外围）
+        { asset = "peach_tree", x = -7.0, z = 26,   s = 1.8, yaw = 30 },
+        { asset = "peach_tree", x = 6.9,  z = -25,  s = 2.0, yaw = 120 },
+        { asset = "peach_tree", x = -7.3, z = -6,   s = 1.6, yaw = 210 },
+        { asset = "peach_tree", x = 7.2,  z = 2,    s = 1.7, yaw = 300 },
+        -- 花丛点缀
+        { asset = "blossom",    x = -4.5, z = 27,   s = 1.0, yaw = 15 },
+        { asset = "blossom",    x = 5.8,  z = 25,   s = 0.9, yaw = 195 },
+        { asset = "blossom",    x = -7.6, z = 8,    s = 1.0, yaw = 75 },
+        { asset = "blossom",    x = 7.7,  z = -12,  s = 0.9, yaw = 255 },
+        -- 小石块
+        { asset = "rock",       x = -3.5, z = 26.5, s = 0.7, yaw = 40 },
+        { asset = "rock",       x = 3.2,  z = 27,   s = 0.5, yaw = 90 },
+        { asset = "rock",       x = -7.4, z = 18,   s = 0.8, yaw = 160 },
+        { asset = "rock",       x = 7.5,  z = 15,   s = 0.6, yaw = 220 },
+        { asset = "rock",       x = -2.5, z = -26,  s = 0.7, yaw = 280 },
+        -- 蜿蜒小径石板（出生→无涕桃 主路点景，视觉不挡路）
+        { asset = "stone_slab", x = 0.6,  z = 14,   s = 0.8, yaw = 12 },
+        { asset = "stone_slab", x = -0.7, z = 9,    s = 0.8, yaw = 40 },
+        { asset = "stone_slab", x = 0.8,  z = 5,    s = 0.8, yaw = 77 },
+    })
+
     -- 出生点
     return Vector3(0, 0.1, 22)
 end
@@ -427,7 +499,8 @@ end
 function BuildGuNeiTaoLin(root)
     local scene_ = root
     -- 地面：青绿清幽（D2 调色贴桃林远景画雾带 0.80/0.83/0.76）
-    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.55, 0.62, 0.48 })
+    -- D2.5：铺满边界墙脚（15×58 = 2×7.5/2×29），修复原 16×46 在 ±Z 墙脚留 6m 可坠地缝
+    WhiteBox.Ground(scene_, "Ground", 15, 58, { 0.55, 0.62, 0.48 })
 
     -- 守桃老人屋（盒屋 + 斜顶）
     WhiteBox.Box(scene_, "OldManHouse", Vector3(-4, 1.2, -14), Vector3(5, 2.4, 4.5), { 0.66, 0.52, 0.38 })
@@ -483,6 +556,27 @@ function BuildGuNeiTaoLin(root)
     DressBlossom(scene_:GetChild("Blossom_fire", true), { x = 6, z = -13.6 }, 4.0, 200)
     DressBlossom(scene_:GetChild("Blossom_water", true), { x = -0.9, z = 10.9 }, 0, 300)
 
+    -- ========== D2.5 场景补全：地面真实化 + 撒点 + 地平线雾带 + 氛围散点 ==========
+    -- 散点纯视觉不带碰撞；避开老屋(-4,-14)/井(-2,10)/望夫崖(6,-15)/三朵桃花
+    Scenery.Build(scene_, "gu_nei_taolin", { halfW = 7.5, halfD = 29 }, {
+        -- 补桃树（青绿桃林密度）
+        { asset = "peach_tree", x = -6.2, z = 20,   s = 1.9, yaw = 65 },
+        { asset = "peach_tree", x = 6.3,  z = 22,   s = 1.7, yaw = 150 },
+        { asset = "peach_tree", x = -6.5, z = -22,  s = 1.8, yaw = 235 },
+        { asset = "peach_tree", x = 3.0,  z = -24,  s = 1.6, yaw = 320 },
+        { asset = "peach_tree", x = 0.5,  z = 24,   s = 2.0, yaw = 10 },
+        -- 花丛/篱笆点景（石条做矮篱意象）
+        { asset = "blossom",    x = -2.5, z = 24,   s = 0.9, yaw = 45 },
+        { asset = "blossom",    x = 4.8,  z = 12,   s = 1.0, yaw = 130 },
+        { asset = "blossom",    x = -6.3, z = 2,    s = 0.9, yaw = 215 },
+        { asset = "stone_slab", x = -0.9, z = -8,   s = 0.7, yaw = 20 },
+        { asset = "stone_slab", x = 1.2,  z = -11,  s = 0.7, yaw = 65 },
+        -- 小石块
+        { asset = "rock",       x = -5.0, z = 25,   s = 0.6, yaw = 30 },
+        { asset = "rock",       x = 5.5,  z = -25,  s = 0.7, yaw = 110 },
+        { asset = "rock",       x = 2.0,  z = 17,   s = 0.5, yaw = 190 },
+    })
+
     -- 出生点（入口）
     return Vector3(0, 0.1, 19)
 end
@@ -493,7 +587,8 @@ end
 function BuildLuoShuiYinShan(root)
     local scene_ = root
     -- 地面：冷雾夜色（D2 调色偏青蓝，贴阴山远景雾带 0.46/0.50/0.56）
-    WhiteBox.Ground(scene_, "Ground", 16, 46, { 0.26, 0.29, 0.36 })
+    -- D2.5：铺满边界墙脚（15×58 = 2×7.5/2×29），修复原 16×46 在 ±Z 墙脚留 6m 可坠地缝
+    WhiteBox.Ground(scene_, "Ground", 15, 58, { 0.26, 0.29, 0.36 })
 
     -- 小镇（几座高低错落的盒屋）
     WhiteBox.Box(scene_, "TownHouse1", Vector3(-4, 1.0, -12), Vector3(4, 2.0, 4), { 0.40, 0.36, 0.40 })
@@ -625,6 +720,25 @@ function BuildLuoShuiYinShan(root)
     -- water 视觉立石台前缘地面（触发点台心原位不动；台顶已立无面鬼，视觉不挤台顶）
     DressBlossom(scene_:GetChild("Blossom_water", true), { x = 3.5, z = 13.2 }, 0, 240)
     DressBlossom(scene_:GetChild("Blossom_metal", true), { x = 0.8, z = -2.6 }, 0, 0)
+
+    -- ========== D2.5 场景补全：地面真实化 + 撒点 + 地平线雾带 + 氛围散点 ==========
+    -- 散点纯视觉不带碰撞；避开小镇民居/泉井(-5.2,14)/鬼石台(3.5,16)/碎石/矿灯
+    Scenery.Build(scene_, "luoshui_yinshan", { halfW = 7.5, halfD = 29 }, {
+        -- 石堆（冷色碎石，填充空旷外围）
+        { asset = "rock",       x = -6.5, z = 20,  s = 1.2, yaw = 25 },
+        { asset = "rock",       x = 6.5,  z = 24,  s = 1.0, yaw = 95 },
+        { asset = "rock",       x = -6.8, z = -20, s = 1.3, yaw = 165 },
+        { asset = "rock",       x = 1.5,  z = 26,  s = 0.9, yaw = 235 },
+        { asset = "rock",       x = 6.8,  z = -24, s = 1.1, yaw = 305 },
+        { asset = "rock",       x = -1.5, z = -26, s = 1.0, yaw = 15 },
+        -- 枯枝/瓦片意象（扁平石板散点）
+        { asset = "stone_slab", x = -1.0, z = 12,  s = 0.6, yaw = 40 },
+        { asset = "stone_slab", x = 0.5,  z = 22,  s = 0.6, yaw = 100 },
+        { asset = "stone_slab", x = 4.5,  z = -19, s = 0.7, yaw = 160 },
+        -- 冷色花丛点景
+        { asset = "blossom",    x = -3.5, z = 24,  s = 0.8, yaw = 50 },
+        { asset = "blossom",    x = 6.0,  z = 8,   s = 0.8, yaw = 200 },
+    })
 
     -- 出生点
     return Vector3(0, 0.1, 19)
