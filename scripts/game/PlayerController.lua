@@ -84,6 +84,8 @@ local diagOneShot_ = false
 local diag3Accum_ = 0.0
 ---@type table<string, boolean>
 local diagReported_ = {}
+---@type Vector3
+local prevPlayerPosition_ = Vector3.ZERO
 
 --- 统计官方动画原始轨道；运行时由 RuntimeRetargeter 按 source/target 骨架映射，不以同名轨道数判断重定向结果。
 ---@param anim Animation
@@ -110,22 +112,22 @@ local function StartSunuAnimation(modelNode)
     print("[PlayerController] 素女动画控制器已启动（RuntimeRetargeter）: " .. SUNU_ANIM_LOCAL[1])
 end
 
---- 按实际速度切换官方原始动画；不使用 FSM，避免 FSM 与控制器同时写 AnimatedModel。
----@param speed number
-local function UpdateSunuAnimation(speed)
+--- 按移动意图切换官方原始动画；GetMoveSpeed 在真机上可能不反映 KCC 实际移动。
+---@param movingIntent boolean
+---@param runningIntent boolean
+local function UpdateSunuAnimation(movingIntent, runningIntent)
     if sunuController_ == nil then return end
     local index = 1
-    if speed >= 3.5 then
-        index = 3
-    elseif speed >= 0.5 then
-        index = 2
+    if movingIntent then
+        -- 移动动画优先由摇杆/WASD 意图决定，避免真机 GetMoveSpeed=0 时穿 Idle。
+        index = runningIntent and 3 or 2
     end
     local path = SUNU_ANIM_LOCAL[index]
     if path ~= nil and not sunuController_:IsPlaying(path) then
         sunuController_:PlayExclusive(path, 0, true, 0.2)
         if not diagReported_[path] then
             diagReported_[path] = true
-            print("[诊断②] 控制器切换官方动画 -> " .. path .. " weight=" .. string.format("%.2f", sunuController_:GetWeight(path)))
+            print("[诊断②] 控制器切换 -> " .. path .. " weight=" .. string.format("%.2f", sunuController_:GetWeight(path)))
         end
     end
 end
@@ -141,6 +143,7 @@ function PlayerController.Create(scene)
 
     -- 玩家节点
     playerNode_ = scene:CreateChild("Player")
+    prevPlayerPosition_ = playerNode_.worldPosition
 
     -- 视觉：素女 3D 模型。D3 优先带骨骼版（AnimatedModel + FSM 播 idle/walk/run），
     --   加载失败回退旧静态网格（随节点整体转向/移动），再失败回退白模球，保玩法不破
@@ -162,9 +165,8 @@ function PlayerController.Create(scene)
         sunuModel_ = bodyModel
         -- rig 包围盒高 ≈1.0 且 Min Y=0 → 等比缩放即脚底落地
         modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
-        -- rig 网格视觉正面在 -Z（D3 截图实测：+90° 呈左侧脸 → 反推正面 -Z）；
-        -- 节点前向 +Z，绕 Y 180° 使正面朝前、第三人称相机看背影
-        modelNode:SetRotation(Quaternion(180, Vector3.UP))
+        -- 节点前向 +Z 与网格前向一致：autoRotateToMoveDir=true 时脸朝移动方向，第三人称相机看到背影
+        modelNode:SetRotation(Quaternion(0, Vector3.UP))
         -- 重定向防飘移：禁用 Root/Hip（3D 角色管线标准做法）
         local skel = bodyModel:GetSkeleton()
         if skel ~= nil then
@@ -305,6 +307,7 @@ function PlayerController.SetPosition(position)
         if kcc_ ~= nil then
             kcc_:Warp(target)
         end
+        prevPlayerPosition_ = playerNode_.worldPosition
     end
 end
 
@@ -432,13 +435,28 @@ function PlayerController.PostUpdate(timeStep)
     if playerNode_ ~= nil and tpCamera_ ~= nil then
         tpCamera_:Update(timeStep, playerNode_, yaw_, pitch_)
     end
-    -- 单一动画驱动路径：速度由 CharacterComponent 计算，动画由官方原始 .ani + RuntimeRetargeter 播放。
-    local speed = 0.0
-    if character_ ~= nil then
-        speed = character_:GetMoveSpeed() / DEBUG_MOVE_SPEED_MULTIPLIER
-        if speed > 5.0 then speed = 5.0 end
+    -- 计算实际节点位移速度：CharacterComponent:GetMoveSpeed() 在真机 KCC 路径上可能始终为 0。
+    -- 以物理步进后节点的位置为准，动画再结合 controls 的移动意图判定。
+    local actualSpeed = 0.0
+    local movingIntent = false
+    local runningIntent = false
+    -- 先读取输入意图，再结合实际位移速度驱动动画。
+    if playerNode_ ~= nil then
+        local currentPosition = playerNode_.worldPosition
+        if timeStep > 0.0 then
+            actualSpeed = (currentPosition - prevPlayerPosition_):Length() / timeStep
+        end
+        prevPlayerPosition_ = currentPosition
     end
-    UpdateSunuAnimation(speed)
+    if character_ ~= nil then
+        local controls = character_.controls
+        movingIntent = controls:IsDown(CTRL_FORWARD)
+            or controls:IsDown(CTRL_BACK)
+            or controls:IsDown(CTRL_LEFT)
+            or controls:IsDown(CTRL_RIGHT)
+        runningIntent = movingIntent and controls:IsDown(CTRL_RUN)
+    end
+    UpdateSunuAnimation(actualSpeed, movingIntent, runningIntent)
 
     -- 诊断②：读取 AnimationController 实际动画状态权重和时间，不读取不存在的 FSM 状态。
     diagTime_ = diagTime_ + timeStep
@@ -475,8 +493,8 @@ function PlayerController.PostUpdate(timeStep)
             local currentControl = sunuController_:GetAnimation(0)
             if currentControl ~= nil then currentAnimation = currentControl.name end
         end
-        print(string.format("[诊断③] moveSpeed=%.2f | 当前动画=%s | grounded=%s",
-            speed, currentAnimation,
+        print(string.format("[诊断③] moveSpeed=%.2f | 意图=%s 跑步=%s | 当前动画=%s | grounded=%s",
+            actualSpeed, tostring(movingIntent), tostring(runningIntent), currentAnimation,
             character_ ~= nil and tostring(character_:IsOnGround()) or "false"))
     end
 end
