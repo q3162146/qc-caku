@@ -16,6 +16,7 @@ local SceneProps = require "game.SceneProps"
 local Scenery = require "game.Scenery"
 local PetalRain = require "game.PetalRain"
 local BlossomGlow = require "game.BlossomGlow"
+local BlossomFlower = require "game.BlossomFlower"
 local GameAudio = require "audio.GameAudio"
 local MusicMap = require "config.MusicMap"
 -- DWP 下载扩展（真机按需下载远程依赖；预热道具模型/材质/贴图减少占位期）
@@ -120,6 +121,10 @@ local function DressBlossom(bNode, visXZ, standY, yaw)
     if vis ~= nil then
         SceneProps.StripVisual(bNode)
     end
+    -- 真机修复①：程序化粉色桃花簇（纯本地，零网络依赖，真机必显示）。
+    -- 真实桃花模型贴图走 DWP 属媒体资源，真机可能先占位后热替换（灰白占位感根因）；
+    -- 程序花簇叠在真实花枝上保底粉色，纹理到达后花枝+粉花更饱满，均随采集一并移除。
+    BlossomFlower.Dress(bNode, Vector3(visXZ.x, standY, visXZ.z), yaw)
 end
 
 ---@type Scene|nil

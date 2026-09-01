@@ -59,7 +59,15 @@ local SUNU_FSM_FILE = "FSM/Sunu.fsm"
 -- DWP 下载扩展（把 DownloadResources 等装到 cache；真机/预览按需下载 uuid 动画必需）
 require "urhox-libs.Engine.ResourceCacheExtensions"
 
--- FSM 引用的官方 DefaultMale 动画（uuid 资源，DWP 按需下载；须先下载再 Load FSM，否则空动画）
+-- FSM 引用的素女动画：本地 .ani 优先（真机必播保底，不依赖 DWP/uuid），
+-- 与 Sunu.fsm / SunuMoveBlend.blendspace 的 _animationPaths 一一对应。
+-- 来源：官方 AnimSet_DefaultMale 同名动画（CDN 下载，UANI 魔数校验通过）
+local SUNU_ANIM_LOCAL = {
+    "animation/DefaultMale_Idle.ani",         -- 站立待机
+    "animation/DefaultMale_WalkForward.ani",  -- 向前行走
+    "animation/DefaultMale_RunForward.ani",   -- 向前跑步
+}
+-- DWP 预案：本地 .ani 缺失时回退的官方动画 uuid（DWP 按需下载）
 local SUNU_ANIM_URIS = {
     "uuid://HIPCWSBd61v8PRI972Yksxzh",  -- 站立待机
     "uuid://HhyjGZvHN9uF8lRsGnN_J7jc",  -- 向前行走
@@ -73,7 +81,25 @@ local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉
 ---@type AnimationStateMachine|nil
 local sunuFsm_ = nil
 
---- 启动素女动画 FSM（须在官方动画 uuid 资源就绪后调用，否则空动画）
+--- 本地 .ani 是否全部可加载（真机必播保底的判据；入包资源走本地缓存，不依赖网络）
+---@return boolean
+local function AreLocalAnimsReady()
+    local ready = true
+    for _, path in ipairs(SUNU_ANIM_LOCAL) do
+        ---@type Animation|nil
+        local anim = cache:GetResource("Animation", path)
+        if anim == nil then
+            print("[PlayerController] 警告：本地动画缺失: " .. path)
+            ready = false
+        else
+            print("[PlayerController] 本地动画就绪: " .. path)
+        end
+    end
+    return ready
+end
+
+--- 启动素女动画 FSM（本地 .ani 就绪后调用；FSM 动画路径指向本地虚拟路径，
+--- 不依赖 DWP/uuid，真机走/跑/停必播）
 ---@param modelNode Node
 local function StartSunuFSM(modelNode)
     modelNode:GetOrCreateComponent("AnimationController")
@@ -88,6 +114,22 @@ local function StartSunuFSM(modelNode)
     else
         print("[PlayerController] 警告：FSM 文件加载失败，模型静态: " .. SUNU_FSM_FILE)
     end
+end
+
+--- DWP 预案（保底诊断通道）：本地 .ani 意外缺失时，尝试下载官方动画 uuid，
+--- 结果写日志（真机排查 "cannot resolve/skip" 用）；FSM 已指向本地路径，
+--- 下载成功与否都不再影响动画播放逻辑，动画保持静态回退不崩溃。
+local function FallbackDwpAnimDownload()
+    if cache.DownloadResources == nil then
+        print("[PlayerController] 无 DWP 下载 API，跳过动画 uuid 预案下载")
+        return
+    end
+    print("[PlayerController] 本地动画缺失 → 触发 uuid 预案下载（诊断通道，"
+        .. #SUNU_ANIM_URIS .. " 个）")
+    cache:DownloadResources(SUNU_ANIM_URIS, function(success, failed)
+        print("[PlayerController] uuid 预案下载结果: success=" .. tostring(success)
+            .. " failed=" .. tostring(failed))
+    end)
 end
 
 --- 创建玩家与相机
@@ -131,21 +173,18 @@ function PlayerController.Create(scene)
             if hipBone ~= nil then hipBone.animated = false end
         end
         -- 动画状态机：idle(0)/walk(2)/run(5) BlendSpace，按 moveSpeed 混合。
-        -- 官方动画为 uuid 远程资源（DWP 按需下载）：先下载就绪再 Load FSM，
-        -- 否则真机上状态机空转无动画；运行时缺 DWP 扩展 API 时直接启动（交由 uuid 路由）。
-        if cache.DownloadResources ~= nil then
-            print("[PlayerController] 素女动画 DWP 预下载中（" .. #SUNU_ANIM_URIS .. " 个）…")
-            cache:DownloadResources(SUNU_ANIM_URIS, function(success, failed)
-                if success then
-                    print("[PlayerController] 素女动画下载完成，启动 FSM")
-                    StartSunuFSM(modelNode)
-                else
-                    print("[PlayerController] 警告：素女动画下载失败 " .. tostring(failed)
-                        .. " 个，模型保持静态")
-                end
-            end)
+        -- 真机修复②：FSM 动画路径指向【本地入包 .ani】（项目 CDN，与模型同源可达），
+        -- 不再依赖 uuid 跨源解析（旧根因：uuid DWP 真机解析失败 → FSM 空动画 → 静态）。
+        -- Animation 为 DWP 占位热替换类型：立即启动 FSM，动画到包后自动热替换开播；
+        -- 资源彻底缺失则空动画静态回退（不崩）。不再用下载回调做启动门槛。
+        if AreLocalAnimsReady() then
+            -- 本地 .ani 入包资源走 ResourceCache 本地加载，不经 DWP 下载
+            -- （DWP 只解析远程资源，本地路径会报 cannot resolve，故不发起下载）
+            StartSunuFSM(modelNode)
         else
-            print("[PlayerController] 运行时无 DWP 下载 API，直接启动 FSM")
+            -- 本地 .ani 不在包内（构建异常）：保留 uuid DWP 预案作诊断通道，
+            -- 同时仍启动 FSM（路径解析不到 → 空动画静态，保底不崩）
+            FallbackDwpAnimDownload()
             StartSunuFSM(modelNode)
         end
         rigLoaded = true

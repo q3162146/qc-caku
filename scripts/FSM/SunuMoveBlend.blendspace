@@ -1,15 +1,19 @@
 {
     "_animationPaths": {
-        "uuid://HIPCWSBd61v8PRI972Yksxzh": "站立待机",
-        "uuid://HhyjGZvHN9uF8lRsGnN_J7jc": "向前行走",
-        "uuid://FshxoWge4mzIJ-wmBu0GK6Vs": "向前跑步"
+        "animation/DefaultMale_Idle.ani": "站立待机",
+        "animation/DefaultMale_WalkForward.ani": "向前行走",
+        "animation/DefaultMale_RunForward.ani": "向前跑步",
+        "uuid://HIPCWSBd61v8PRI972Yksxzh": "官方 uuid 钉入本地",
+        "uuid://HhyjGZvHN9uF8lRsGnN_J7jc": "官方 uuid 钉入本地",
+        "uuid://FshxoWge4mzIJ-wmBu0GK6Vs": "官方 uuid 钉入本地",
+        "uuid://F4ItQUiV0gmvAelLXpk5yrTs": "重定向映射表钉入本地"
     },
     "type": "BlendSpace1D",
     "name": "SunuMoveBlend",
     "parameter": "moveSpeed",
     "points": [
-        { "value": 0, "animation": "uuid://HIPCWSBd61v8PRI972Yksxzh", "speed": 1.0 },
-        { "value": 2, "animation": "uuid://HhyjGZvHN9uF8lRsGnN_J7jc", "speed": 1.0 },
-        { "value": 5, "animation": "uuid://FshxoWge4mzIJ-wmBu0GK6Vs", "speed": 1.0 }
+        { "value": 0, "animation": "animation/DefaultMale_Idle.ani", "speed": 1.0 },
+        { "value": 2, "animation": "animation/DefaultMale_WalkForward.ani", "speed": 1.0 },
+        { "value": 5, "animation": "animation/DefaultMale_RunForward.ani", "speed": 1.0 }
     ]
 }

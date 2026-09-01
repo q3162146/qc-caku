@@ -2,9 +2,13 @@
     "name": "SunuFSM",
     "defaultBlendTime": 0.2,
     "_animationPaths": {
-        "uuid://HIPCWSBd61v8PRI972Yksxzh": "站立待机",
-        "uuid://HhyjGZvHN9uF8lRsGnN_J7jc": "向前行走",
-        "uuid://FshxoWge4mzIJ-wmBu0GK6Vs": "向前跑步"
+        "animation/DefaultMale_Idle.ani": "站立待机（本地入包，真机必播）",
+        "animation/DefaultMale_WalkForward.ani": "向前行走（本地入包）",
+        "animation/DefaultMale_RunForward.ani": "向前跑步（本地入包）",
+        "uuid://HIPCWSBd61v8PRI972Yksxzh": "官方 uuid 钉入（.meta 已绑定本地 .ani，构建引用计算用）",
+        "uuid://HhyjGZvHN9uF8lRsGnN_J7jc": "官方 uuid 钉入（同上）",
+        "uuid://FshxoWge4mzIJ-wmBu0GK6Vs": "官方 uuid 钉入（同上）",
+        "uuid://F4ItQUiV0gmvAelLXpk5yrTs": "重定向映射表 AnimationsMappings.json 钉入本地（.meta 绑定）"
     },
 
     "parameters": {
