@@ -80,6 +80,89 @@ local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉
 
 ---@type AnimationStateMachine|nil
 local sunuFsm_ = nil
+---@type AnimatedModel|nil 素女骨骼模型引用（诊断②动画状态数查询用）
+local sunuModel_ = nil
+
+-- ── 四线诊断 + 手动兜底（真机"人物动画僵直"排查，2026-09-02）─────────────
+---@type number 诊断累计时间（秒）
+local diagTime_ = 0.0
+---@type boolean 诊断②一次性输出标记（~1 秒后，动画状态已建立）
+local diagOneShot_ = false
+---@type boolean 看门狗是否已判定（~3 秒后一次性）
+local watchdogFired_ = false
+---@type number 诊断③周期性输出计时（每 1 秒一行）
+local diag3Accum_ = 0.0
+-- 诊断④ 骨架绑定统计（动画轨道名 ∩ 模型骨骼名）
+--- @param anim Animation
+--- @param skel Skeleton
+--- @return integer bound
+--- @return integer total
+local function CountBoundTracks(anim, skel)
+    local bound, total = 0, anim:GetNumTracks()
+    for i = 0, total - 1 do
+        local tr = anim:GetTrack(i)
+        if tr ~= nil and skel:GetBone(tr.name) ~= nil then
+            bound = bound + 1
+        end
+    end
+    return bound, total
+end
+
+---@type integer 诊断/看门狗帧计数（PostUpdate 每帧 +1）
+local diagFrames_ = 0
+---@type integer 手动兜底模式当前播放的动画索引（1=待机 2=走 3=跑）
+local manualClipIndex_ = 0
+---@type boolean 手动兜底是否已激活（FSM 无输出时接管）
+local manualDriveActive_ = false
+---@type AnimationController|nil
+local manualController_ = nil
+---@type AnimationStateMachine|nil 兜底激活前先移除的 FSM 组件引用
+local fsmToRemove_ = nil
+
+--- 激活手动兜底（方案 D）：移除 AnimationStateMachine（文档明令二者不可同节点并用），
+--- 用 AnimationController 按 moveSpeed 手动切 idle/walk/run。只在 FSM 失效时调用一次。
+local function ActivateManualDrive()
+    if manualDriveActive_ then return end
+    manualDriveActive_ = true
+    if fsmToRemove_ ~= nil then
+        fsmToRemove_:Remove()
+        fsmToRemove_ = nil
+    end
+    sunuFsm_ = nil
+    if playerNode_ ~= nil then
+        local modelNode = playerNode_:GetChild("ModelNode")
+        if modelNode ~= nil then
+            manualController_ = modelNode:GetOrCreateComponent("AnimationController")
+        end
+    end
+    manualClipIndex_ = 0
+    print("[诊断②] 手动兜底已激活（移除FSM，AnimationController 接管）")
+    if manualController_ ~= nil then
+        manualController_:PlayExclusive(SUNU_ANIM_LOCAL[1], 0, true, 0.25)
+        manualClipIndex_ = 1
+    end
+end
+
+--- 手动兜底（方案 D）：AnimationController 按 moveSpeed 直接切
+--- idle/walk/run（PlayExclusive + 淡入），不依赖 FSM/BlendSpace，真机必播。
+---@param speed number
+local function ManualDriveTick(speed)
+    if manualController_ == nil then return end
+    local idx = 1
+    if speed >= 3.5 then
+        idx = 3
+    elseif speed >= 0.5 then
+        idx = 2
+    end
+    if idx ~= manualClipIndex_ then
+        manualClipIndex_ = idx
+        local path = SUNU_ANIM_LOCAL[idx]
+        if path ~= nil then
+            manualController_:PlayExclusive(path, 0, true, 0.25)
+            print("[诊断②] 手动兜底切换动画 -> " .. path)
+        end
+    end
+end
 
 --- 本地 .ani 是否全部可加载（真机必播保底的判据；入包资源走本地缓存，不依赖网络）
 ---@return boolean
@@ -107,10 +190,12 @@ local function StartSunuFSM(modelNode)
     ---@type JSONFile|nil
     local fsmFile = cache:GetResource("JSONFile", SUNU_FSM_FILE)
     if fsmFile ~= nil then
-        fsm:LoadFromJSONFile(fsmFile)
+        local loaded = fsm:LoadFromJSONFile(fsmFile)
         fsm:Start()
         sunuFsm_ = fsm
-        print("[PlayerController] 素女动画 FSM 已启动: " .. SUNU_FSM_FILE)
+        fsmToRemove_ = fsm
+        print("[PlayerController] 素女动画 FSM 已启动(load=" .. tostring(loaded)
+            .. " layers=" .. fsm:GetNumLayers() .. "): " .. SUNU_FSM_FILE)
     else
         print("[PlayerController] 警告：FSM 文件加载失败，模型静态: " .. SUNU_FSM_FILE)
     end
@@ -159,6 +244,9 @@ function PlayerController.Create(scene)
             bodyModel:SetMaterial(rigMat)
         end
         bodyModel.castShadows = true
+        -- 视锥外/遮挡时仍推进动画（真机第三人称背身偶尔被树冠遮挡不至于冻结）
+        bodyModel:SetUpdateInvisible(true)
+        sunuModel_ = bodyModel
         -- rig 包围盒高 ≈1.0 且 Min Y=0 → 等比缩放即脚底落地
         modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
         -- rig 网格视觉正面在 -Z（D3 截图实测：+90° 呈左侧脸 → 反推正面 -Z）；
@@ -171,6 +259,25 @@ function PlayerController.Create(scene)
             if rootBone ~= nil then rootBone.animated = false end
             local hipBone = skel:GetBone("Hip")
             if hipBone ~= nil then hipBone.animated = false end
+        end
+        -- 诊断①/④（一次性）：模型类型 + 每支本地动画轨道与骨架的绑定统计
+        print(string.format("[诊断①] 模型=AnimatedModel 骨骼数=%d rig=%s",
+            skel ~= nil and skel:GetNumBones() or -1, SUNU_RIG_MODEL))
+        if skel ~= nil then
+            for _, path in ipairs(SUNU_ANIM_LOCAL) do
+                ---@type Animation|nil
+                local anim = cache:GetResource("Animation", path)
+                if anim == nil then
+                    print("[诊断④] 动画缺失 -> " .. path)
+                else
+                    local bound, total = CountBoundTracks(anim, skel)
+                    print(string.format("[诊断④] 轨道绑定 %d/%d (%s) len=%.2fs",
+                        bound, total, path, anim:GetLength()))
+                    if bound == 0 then
+                        print("[诊断④] 警告：该动画与骨架零绑定 → 播了也不动（僵直根因）")
+                    end
+                end
+            end
         end
         -- 动画状态机：idle(0)/walk(2)/run(5) BlendSpace，按 moveSpeed 混合。
         -- 真机修复②：FSM 动画路径指向【本地入包 .ani】（项目 CDN，与模型同源可达），
@@ -191,12 +298,14 @@ function PlayerController.Create(scene)
         print("[PlayerController] 素女骨骼模型已加载: " .. SUNU_RIG_MODEL)
     else
         print("[PlayerController] 警告：带骨骼素女加载失败，回退静态模型")
+        print("[诊断①] 模型=回退路径（rig 资源不可用，骨骼数为 0）")
     end
 
     if not rigLoaded then
         local sunuModel = cache:GetResource("Model", SUNU_MODEL)
         local sunuMat = cache:GetResource("Material", SUNU_MATERIAL)
         if sunuModel ~= nil then
+            print("[诊断①] 模型=StaticModel（旧静态素女，无动画）")
             local bodyModel = modelNode:CreateComponent("StaticModel")
             bodyModel:SetModel(sunuModel)
             if sunuMat ~= nil then
@@ -428,11 +537,83 @@ function PlayerController.PostUpdate(timeStep)
         tpCamera_:Update(timeStep, playerNode_, yaw_, pitch_)
     end
     -- 喂 FSM：实际速度按临时提速倍数归一化，对齐 BlendSpace 点（0 待机/2 走/5 跑）
-    if sunuFsm_ ~= nil and character_ ~= nil then
-        local speed = character_:GetMoveSpeed() / DEBUG_MOVE_SPEED_MULTIPLIER
+    local speed = 0.0
+    if character_ ~= nil then
+        speed = character_:GetMoveSpeed() / DEBUG_MOVE_SPEED_MULTIPLIER
         if speed > 5.0 then speed = 5.0 end
+    end
+    if sunuFsm_ ~= nil and character_ ~= nil then
         sunuFsm_:SetFloat("moveSpeed", speed)
         sunuFsm_:SetBool("isGrounded", character_:IsOnGround())
+    end
+
+    -- ── 诊断②③ + 看门狗（手动兜底方案 D）────────────────────────────
+    diagTime_ = diagTime_ + timeStep
+    diagFrames_ = diagFrames_ + 1
+
+    -- 诊断②（一次性，~1 秒后）：AnimatedModel 动画状态数 + 状态名/权重
+    if not diagOneShot_ and diagTime_ >= 1.0 then
+        diagOneShot_ = true
+        local states = sunuModel_ ~= nil and sunuModel_:GetNumAnimationStates() or 0
+        local curState = sunuFsm_ ~= nil and tostring(sunuFsm_:GetCurrentState(0)) or "无FSM"
+        local stateTime = sunuFsm_ ~= nil and sunuFsm_:GetStateTime(0) or -1
+        local w = -1.0
+        local ctrl = sunuModel_ ~= nil and sunuModel_:GetNode():GetComponent("AnimationController") or nil
+        if ctrl ~= nil and ctrl:GetNumAnimations() > 0 then
+            local ac = ctrl:GetAnimation(0)
+            if ac ~= nil then w = ctrl:GetWeight(ac.name) end
+        end
+        print(string.format("[诊断②] 动画状态=%d | FSM当前=%s stateTime=%.2f | 控制器动画数=%d 权重=%.2f",
+            states, curState, stateTime,
+            ctrl ~= nil and ctrl:GetNumAnimations() or 0, w))
+    end
+
+    -- 诊断③（周期 1 秒）：moveSpeed + FSM 状态/时间推进
+    diag3Accum_ = diag3Accum_ + timeStep
+    if diag3Accum_ >= 1.0 then
+        diag3Accum_ = diag3Accum_ - 1.0
+        if sunuFsm_ ~= nil and character_ ~= nil then
+            print(string.format("[诊断③] moveSpeed=%.2f | 状态=%s stateTime=%.2f norm=%.2f | grounded=%s",
+                speed, tostring(sunuFsm_:GetCurrentState(0)), sunuFsm_:GetStateTime(0),
+                sunuFsm_:GetNormalizedTime(0), tostring(character_:IsOnGround())))
+        elseif manualDriveActive_ then
+            print(string.format("[诊断③] moveSpeed=%.2f | 手动兜底播放中 clip=%d", speed, manualClipIndex_))
+        end
+    end
+
+    -- 看门狗（一次性，~3 秒后）：检查 AnimatedModel 是否有真正在播的动画状态。
+    -- 判据：动画状态数 >= 1 且存在权重 > 0.1 的状态 = 有声播出；否则判定僵死 → 手动兜底接管。
+    -- （FSM stateTime 会照常推进，不能当判据——旧事故就是"时间在走但骨头不动"）
+    if not watchdogFired_ and diagTime_ >= 3.0 then
+        watchdogFired_ = true
+        if sunuModel_ ~= nil then
+            local nStates = sunuModel_:GetNumAnimationStates()
+            local maxW = 0.0
+            local ctrl = sunuModel_:GetNode():GetComponent("AnimationController")
+            if ctrl ~= nil then
+                for i = 0, ctrl:GetNumAnimations() - 1 do
+                    local ac = ctrl:GetAnimation(i)
+                    if ac ~= nil then
+                        local w = ctrl:GetWeight(ac.name)
+                        if w > maxW then maxW = w end
+                    end
+                end
+            end
+            if nStates >= 1 and maxW > 0.1 then
+                print(string.format("[诊断②] 看门狗：动画状态=%d 最大权重=%.2f → 正常，保留 FSM",
+                    nStates, maxW))
+            else
+                print(string.format(
+                    "[诊断②] 看门狗：动画状态=%d 最大权重=%.2f → 判定无声播出，切换手动兜底",
+                    nStates, maxW))
+                ActivateManualDrive()
+            end
+        end
+    end
+
+    -- 手动兜底驱动（激活后每帧按速度切动画）
+    if manualDriveActive_ then
+        ManualDriveTick(speed)
     end
 end
 
