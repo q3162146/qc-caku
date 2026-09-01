@@ -84,6 +84,8 @@ local diagOneShot_ = false
 local diag3Accum_ = 0.0
 ---@type table<string, boolean>
 local diagReported_ = {}
+---@type integer
+local sunuAnimationIndex_ = 1
 ---@type Vector3
 local prevPlayerPosition_ = Vector3.ZERO
 
@@ -109,6 +111,7 @@ local function StartSunuAnimation(modelNode)
     local controller = modelNode:GetOrCreateComponent("AnimationController")
     sunuController_ = controller
     controller:PlayExclusive(SUNU_ANIM_LOCAL[1], 0, true, 0.0)
+    sunuAnimationIndex_ = 1
     print("[PlayerController] 素女动画控制器已启动（RuntimeRetargeter）: " .. SUNU_ANIM_LOCAL[1])
 end
 
@@ -123,7 +126,8 @@ local function UpdateSunuAnimation(movingIntent, runningIntent)
         index = runningIntent and 3 or 2
     end
     local path = SUNU_ANIM_LOCAL[index]
-    if path ~= nil and not sunuController_:IsPlaying(path) then
+    if path ~= nil and index ~= sunuAnimationIndex_ then
+        sunuAnimationIndex_ = index
         sunuController_:PlayExclusive(path, 0, true, 0.2)
         if not diagReported_[path] then
             diagReported_[path] = true
