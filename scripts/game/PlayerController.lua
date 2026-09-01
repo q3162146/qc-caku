@@ -36,6 +36,13 @@ local blossomHandler_ = nil
 local pickupsEnabled_ = false
 ---@type table 已上报"进入半径"的标记节点（边沿触发，离开半径即重置，防每帧刷屏）
 local inRadius_ = {}
+---@class PlayerBounds
+---@field minX number
+---@field maxX number
+---@field minZ number
+---@field maxZ number
+---@type PlayerBounds|nil 场景可走边界硬钳制（LoadScene 传入；nil=不钳制）
+local bounds_ = nil
 
 local MOUSE_SENSITIVITY = 0.15   -- 鼠标灵敏度（度/像素）
 local PITCH_LIMIT = 80.0
@@ -275,6 +282,28 @@ function PlayerController.SetBlossomHandler(handler)
     blossomHandler_ = handler
 end
 
+--- 设置场景可走边界硬钳制（真机修复 ②：×4 提速下防 KCC 隧穿/摇杆拉出界）
+---@param b PlayerBounds|nil nil = 不钳制
+function PlayerController.SetBounds(b)
+    bounds_ = b
+end
+
+--- 物理步进后把玩家 XZ 钳回可走边界（超界才写位置 + Warp 同步 KCC 内部状态）
+local function ClampToBounds()
+    if bounds_ == nil or playerNode_ == nil then return end
+    local p = playerNode_.position
+    local cx = math.max(bounds_.minX, math.min(bounds_.maxX, p.x))
+    local cz = math.max(bounds_.minZ, math.min(bounds_.maxZ, p.z))
+    if cx ~= p.x or cz ~= p.z then
+        local np = Vector3(cx, p.y, cz)
+        playerNode_.position = np
+        if kcc_ ~= nil then
+            kcc_:Warp(np)   -- 同步 KCC，防下一帧把玩家拉回超界旧位
+        end
+        print("[PlayerController] 边界钳制 -> " .. tostring(cx) .. ", " .. tostring(cz))
+    end
+end
+
 --- 是否启用作近拾取/交互（仅当前流段为 explore 时 true，FlowController 进入段落时维护）
 ---@param enabled boolean
 function PlayerController.SetPickupsEnabled(enabled)
@@ -354,6 +383,8 @@ end
 --- PostUpdate：更新第三人称相机 + 素女动画 FSM 参数
 ---@param timeStep number
 function PlayerController.PostUpdate(timeStep)
+    -- 边界硬钳制：物理步进后、相机更新前（相机跟随钳制后位置，防视角甩出界）
+    ClampToBounds()
     if playerNode_ ~= nil and tpCamera_ ~= nil then
         tpCamera_:Update(timeStep, playerNode_, yaw_, pitch_)
     end

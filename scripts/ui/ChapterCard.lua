@@ -17,7 +17,8 @@ local CARDS = {
         seal = "木",
     },
     ch1 = {
-        image = "image/章节卡/ch1_春信至.png",
+        -- 真机修复 ③：原 ch1 卡图为灰蓝雾山与朝阳谷剧情地点不符 → 换暖金桃谷版（标题/印章不变）
+        image = "image/章节卡/ch1_春信至_暖.png",
         scene = "image/backdrop_chaoyang_20260831015902.png",
         title = "收集 · 朝阳之谷",
         seal = "火",
@@ -57,11 +58,35 @@ local onHidden_ = nil
 ---@type number
 local remain_ = 0
 
+-- 真机修复 ③：淡入淡出过渡（opacity 驱动，避免背景"突然弹出"）
+local FADE_IN_T = 0.35
+local FADE_OUT_T = 0.35
+local HOLD_T = 1.8          -- 全显后自动隐藏等待秒数
+---@type "closed"|"in"|"hold"|"out"
+local fadeState_ = "closed"
+---@type number
+local alpha_ = 0
+
+local function setAlpha(a)
+    alpha_ = a
+    if root_ ~= nil then
+        root_:SetStyle({ opacity = a })
+    end
+end
+
+--- 进入淡出（隐藏动画），完成后才 SetVisible(false) + 回调
+local function beginFadeOut()
+    if fadeState_ == "out" or fadeState_ == "closed" then return end
+    fadeState_ = "out"
+end
+
 local function doHide()
     if root_ ~= nil then
         root_:SetVisible(false)
     end
     remain_ = 0
+    fadeState_ = "closed"
+    setAlpha(0)
     local cb = onHidden_
     onHidden_ = nil
     if cb ~= nil then cb() end
@@ -136,7 +161,7 @@ function ChapterCard.Create(uiRoot)
         height = 46,
         onClick = function()
             GameAudio.PlaySfx("audio/sfx/sfx_ui_confirm.mp3")
-            doHide()
+            beginFadeOut()   -- 淡出过渡后再隐藏（不再硬切）
         end,
     })
     root_:AddChild(sceneBg_)
@@ -164,14 +189,16 @@ function ChapterCard.Show(chapterId, onHidden)
     if titleLabel_ ~= nil then titleLabel_:SetText(info.title) end
     if sealLabel_ ~= nil then sealLabel_:SetText(info.seal) end
     onHidden_ = onHidden
-    remain_ = 1.8
+    remain_ = HOLD_T
     root_:SetVisible(true)
+    fadeState_ = "in"
+    setAlpha(0)   -- 从全透起步淡入
     GameAudio.PlaySfx("audio/sfx/sfx_bell.mp3", 0.6)
     print("[ChapterCard] 显示 " .. tostring(chapterId) .. " | " .. info.title)
 end
 
 function ChapterCard.Hide()
-    doHide()
+    beginFadeOut()
 end
 
 ---@return boolean
@@ -181,10 +208,30 @@ end
 
 ---@param dt number
 function ChapterCard.Update(dt)
-    if remain_ <= 0 then return end
-    remain_ = remain_ - dt
-    if remain_ <= 0 then
-        doHide()
+    if fadeState_ == "closed" then return end
+
+    if fadeState_ == "in" then
+        local a = alpha_ + dt / FADE_IN_T
+        if a >= 1 then
+            setAlpha(1)
+            fadeState_ = "hold"
+        else
+            setAlpha(a)
+        end
+    elseif fadeState_ == "hold" then
+        if remain_ > 0 then
+            remain_ = remain_ - dt
+            if remain_ <= 0 then
+                beginFadeOut()   -- 自动淡出
+            end
+        end
+    elseif fadeState_ == "out" then
+        local a = alpha_ - dt / FADE_OUT_T
+        if a <= 0 then
+            doHide()
+        else
+            setAlpha(a)
+        end
     end
 end
 

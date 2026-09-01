@@ -15,6 +15,7 @@ local Backdrop = require "game.Backdrop"
 local SceneProps = require "game.SceneProps"
 local Scenery = require "game.Scenery"
 local PetalRain = require "game.PetalRain"
+local BlossomGlow = require "game.BlossomGlow"
 local GameAudio = require "audio.GameAudio"
 local MusicMap = require "config.MusicMap"
 -- DWP 下载扩展（真机按需下载远程依赖；预热道具模型/材质/贴图减少占位期）
@@ -180,6 +181,14 @@ local SCENE_MOOD = {
     },
 }
 
+--- 场景可走边界（真机修复 ②：玩家位置硬钳制；= BoundaryWalls 的 half 值，
+--- 墙内侧面在 half+0.5，胶囊半径 0.35 → 钳制后永不贴墙/穿墙）
+local SCENE_BOUNDS = {
+    chaoyang_gukou  = { minX = -8.5, maxX = 8.5, minZ = -32, maxZ = 32 },
+    gu_nei_taolin   = { minX = -7.5, maxX = 7.5, minZ = -29, maxZ = 29 },
+    luoshui_yinshan = { minX = -7.5, maxX = 7.5, minZ = -29, maxZ = 29 },
+}
+
 --- D2.5-四：真实道具 DWP 预热 + 资产清单诊断
 ---   白模道具的 .mdl 为 render-blocking（真机必然在包内），贴图属 DWP 媒体资源
 ---   （真机首见先占位后热替换，表现为"帧偏空/白模感"）。场景加载时先发起全部
@@ -295,6 +304,13 @@ function SceneManager.LoadScene(sceneName)
         print("[SceneManager] 玩家出生点: " .. tostring(spawn.x) .. ", " .. tostring(spawn.y) .. ", " .. tostring(spawn.z))
     end
 
+    -- 真机修复 ②：玩家 XZ 硬钳制到可走边界（防 ×4 提速 KCC 隧穿/摇杆拉出界）
+    if player_ ~= nil then
+        player_.SetBounds(SCENE_BOUNDS[sceneName])
+    end
+    -- 真机修复 ①：五行桃花挂发光组（壳/点光/微光挂触发球下，采集随父节点移除）
+    BlossomGlow.AttachAll(sceneRoot_)
+
     print("[SceneManager] 场景已加载: " .. sceneName)
     return true
 end
@@ -348,8 +364,8 @@ end
 function BuildChaoyangGukou(root)
     local scene_ = root
     -- 地面：暖金色（D2 调色贴朝阳远景画雾带 0.90/0.84/0.74）
-    -- D2.5：地面铺满边界墙脚（17×64 = 2×8.5/2×32），消除原 18×52 与墙间的地缝
-    WhiteBox.Ground(scene_, "Ground", 17, 64, { 0.86, 0.76, 0.58 })
+    -- 真机修复 ②：墙加厚 1.5 外移后，地面扩到墙外沿（2×10.5/2×34）盖住墙脚缝隙
+    WhiteBox.Ground(scene_, "Ground", 21, 68, { 0.86, 0.76, 0.58 })
 
     -- 无涕桃（中央，略大）
     WhiteBox.PeachTree(scene_, "WutiTao", Vector3(0, 0, 0), 1.6)
@@ -507,8 +523,8 @@ end
 function BuildGuNeiTaoLin(root)
     local scene_ = root
     -- 地面：青绿清幽（D2 调色贴桃林远景画雾带 0.80/0.83/0.76）
-    -- D2.5：铺满边界墙脚（15×58 = 2×7.5/2×29），修复原 16×46 在 ±Z 墙脚留 6m 可坠地缝
-    WhiteBox.Ground(scene_, "Ground", 15, 58, { 0.55, 0.62, 0.48 })
+    -- 真机修复 ②：墙加厚外移后地面扩到墙外沿（2×9.5/2×31）盖住墙脚缝隙
+    WhiteBox.Ground(scene_, "Ground", 19, 62, { 0.55, 0.62, 0.48 })
 
     -- 守桃老人屋（盒屋 + 斜顶）
     WhiteBox.Box(scene_, "OldManHouse", Vector3(-4, 1.2, -14), Vector3(5, 2.4, 4.5), { 0.66, 0.52, 0.38 })
@@ -595,8 +611,8 @@ end
 function BuildLuoShuiYinShan(root)
     local scene_ = root
     -- 地面：冷雾夜色（D2 调色偏青蓝，贴阴山远景雾带 0.46/0.50/0.56）
-    -- D2.5：铺满边界墙脚（15×58 = 2×7.5/2×29），修复原 16×46 在 ±Z 墙脚留 6m 可坠地缝
-    WhiteBox.Ground(scene_, "Ground", 15, 58, { 0.26, 0.29, 0.36 })
+    -- 真机修复 ②：墙加厚外移后地面扩到墙外沿（2×9.5/2×31）盖住墙脚缝隙
+    WhiteBox.Ground(scene_, "Ground", 19, 62, { 0.26, 0.29, 0.36 })
 
     -- 小镇（几座高低错落的盒屋）
     WhiteBox.Box(scene_, "TownHouse1", Vector3(-4, 1.0, -12), Vector3(4, 2.0, 4), { 0.40, 0.36, 0.40 })

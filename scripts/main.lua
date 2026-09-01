@@ -32,6 +32,7 @@ local GameAudio = require "audio.GameAudio"
 local MediaPlayer = require "media.MediaPlayer"
 local MusicMap = require "config.MusicMap"
 local PetalRain = require "game.PetalRain"
+local BlossomGlow = require "game.BlossomGlow"
 local UI = require "urhox-libs/UI"
 
 ---@type Scene|nil
@@ -240,6 +241,7 @@ function HandleUpdate(eventType, eventData)
     -- 对话/菜单打开时：只处理对应输入，玩家停移动（防串台）
     GameAudio.Tick(timeStep)      -- dt 驱动 BGM 换曲淡入淡出
     PetalRain.Update(timeStep)    -- 落花发射器跟随玩家 XZ
+    BlossomGlow.Update(timeStep)  -- 桃花呼吸发光/靠近高亮脉冲
     if ChapterCard.IsOpen() then
         ChapterCard.Update(timeStep)
     end

@@ -141,18 +141,26 @@ function WhiteBox.Ground(scene, name, sizeX, sizeZ, rgb, y)
 end
 
 --- 创建四周边界墙（防走出白模区域）
+--- 真机修复 ②：墙厚 0.5→1.5m 防 ×4 提速 KCC 隧穿；墙体内移使【内侧面】位于
+--- half + 0.5（即玩家硬钳制边界外再留 0.5m 余量，胶囊半径 0.35 → 永不贴墙/穿墙）。
 ---@param scene Scene
----@param halfWidth number 半宽（X 轴）
----@param halfDepth number 半深（Z 轴）
+---@param halfWidth number 半宽（X 轴，= 玩家硬钳制边界）
+---@param halfDepth number 半深（Z 轴，= 玩家硬钳制边界）
 ---@param height number 墙高
 ---@param rgb table
-function WhiteBox.BoundaryWalls(scene, halfWidth, halfDepth, height, rgb)
-    local wallThickness = 0.5
+---@param thickness number|nil 墙厚（默认 1.5）
+function WhiteBox.BoundaryWalls(scene, halfWidth, halfDepth, height, rgb, thickness)
+    local wallThickness = thickness or 1.5
+    local margin = 0.5                       -- 钳制边界→墙内侧面余量
+    local innerX = halfWidth + margin        -- 墙内侧面位置
+    local innerZ = halfDepth + margin
+    local cx = innerX + wallThickness / 2    -- 墙中心（内侧面之外）
+    local cz = innerZ + wallThickness / 2
     local walls = {
-        { 0,  halfDepth, halfWidth * 2, wallThickness },
-        { 0, -halfDepth, halfWidth * 2, wallThickness },
-        {  halfWidth, 0, wallThickness, halfDepth * 2 },
-        { -halfWidth, 0, wallThickness, halfDepth * 2 },
+        { 0,  cz, innerX * 2 + wallThickness, wallThickness },
+        { 0, -cz, innerX * 2 + wallThickness, wallThickness },
+        {  cx, 0, wallThickness, innerZ * 2 + wallThickness },
+        { -cx, 0, wallThickness, innerZ * 2 + wallThickness },
     }
     for i, w in ipairs(walls) do
         WhiteBox.Box(scene, "Wall" .. i, Vector3(w[1], height / 2, w[2]),
