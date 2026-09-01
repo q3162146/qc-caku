@@ -30,6 +30,8 @@ local EndingScreen = require "ui.EndingScreen"
 local ChapterCard = require "ui.ChapterCard"
 local GameAudio = require "audio.GameAudio"
 local MediaPlayer = require "media.MediaPlayer"
+local MusicMap = require "config.MusicMap"
+local PetalRain = require "game.PetalRain"
 local UI = require "urhox-libs/UI"
 
 ---@type Scene|nil
@@ -189,6 +191,9 @@ function Start()
     EndingScreen.Create(UI.GetRoot())
     ChapterCard.Create(UI.GetRoot())
     EndingScreen.SetOnReturn(function()
+        -- 结局回主菜单：恢复主题曲 + 落花氛围还原
+        GameAudio.PlayMusic(MusicMap.menu)
+        PetalRain.SetDense(false)
         MainMenu.Show()
     end)
 
@@ -196,10 +201,14 @@ function Start()
     -- 结局段 → 弹出对应结局卡 + 制作名单（点返回再进主菜单）
     FlowController.SetOnGameEnd(function(endingKey)
         EndingScreen.Show(endingKey)
+        -- 结局氛围：终章曲 + 落花加浓（更密更慢；场景落花关闭时也开浓档点缀）
+        GameAudio.PlayMusic(MusicMap.ending)
+        PetalRain.SetDense(true)
     end)
     -- 主菜单：由玩家选择"开始游戏 / 继续游戏"（不再启动即自动续档）
     MainMenu.Create(UI.GetRoot())
     MainMenu.Show()
+    GameAudio.PlayMusic(MusicMap.menu)   -- 主菜单主题曲（缺文件静默）
 
     -- 6. 事件订阅
     SubscribeToEvent("Update", "HandleUpdate")
@@ -229,7 +238,8 @@ function HandleUpdate(eventType, eventData)
     end
 
     -- 对话/菜单打开时：只处理对应输入，玩家停移动（防串台）
-    GameAudio.Tick()
+    GameAudio.Tick(timeStep)      -- dt 驱动 BGM 换曲淡入淡出
+    PetalRain.Update(timeStep)    -- 落花发射器跟随玩家 XZ
     if ChapterCard.IsOpen() then
         ChapterCard.Update(timeStep)
     end

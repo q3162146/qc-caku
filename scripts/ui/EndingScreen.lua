@@ -120,7 +120,8 @@ function EndingScreen.Create(uiRoot)
         id = "endingScreen",
         position = "absolute",
         top = 0, left = 0, right = 0, bottom = 0,
-        backgroundColor = { 16, 14, 12, 245 },
+        -- 氛围收口：底幕半透（原 245 近不透），让 3D 场景的结局落花透出（卡片自身不透保可读）
+        backgroundColor = { 16, 14, 12, 170 },
         justifyContent = "center",
         alignItems = "center",
         zIndex = 97,

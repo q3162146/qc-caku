@@ -14,6 +14,9 @@ local WhiteBox = require "game.WhiteBox"
 local Backdrop = require "game.Backdrop"
 local SceneProps = require "game.SceneProps"
 local Scenery = require "game.Scenery"
+local PetalRain = require "game.PetalRain"
+local GameAudio = require "audio.GameAudio"
+local MusicMap = require "config.MusicMap"
 -- DWP 下载扩展（真机按需下载远程依赖；预热道具模型/材质/贴图减少占位期）
 require "urhox-libs.Engine.ResourceCacheExtensions"
 
@@ -222,6 +225,7 @@ end
 function SceneManager.Init(scene, player)
     scene_ = scene
     player_ = player
+    PetalRain.Create(scene)   -- 落花发射器全局一次（挂 scene 根，不随 SceneRoot 销毁）
 end
 
 --- 注册"场景加载完成"回调（用于显示场景名横幅等）
@@ -261,6 +265,10 @@ function SceneManager.LoadScene(sceneName)
 
     -- D1 远景：水墨全景 cubemap Skybox（不随 SceneRoot 销毁；失败回退渐变天空）
     Backdrop.Apply(scene_, sceneName, SCENE_MOOD[sceneName])
+
+    -- 特效氛围收口：BGM 随场景换曲（淡入淡出；缺文件静默）+ 落花开关/换 tint
+    GameAudio.PlayMusic(MusicMap.scene[sceneName])
+    PetalRain.SetScene(sceneName)
 
     -- 场景名回传（用于顶部横幅等）
     if onSceneLoaded_ ~= nil then
