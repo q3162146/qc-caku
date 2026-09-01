@@ -48,8 +48,8 @@ local MOUSE_SENSITIVITY = 0.15   -- 鼠标灵敏度（度/像素）
 local PITCH_LIMIT = 80.0
 local PICKUP_RADIUS = 1.6        -- 走近拾取/交互半径（米；真机摇杆走近需略大于白模球体）
 
--- ⚠️ D 阶段真机测试临时提速（跑图/采集/触发用）——正式发布前必须改回 1.0！
-local DEBUG_MOVE_SPEED_MULTIPLIER = 4.0
+-- 移动速度倍数（D 阶段真机测试曾临时 ×4，已恢复 1.0 正式值）
+local DEBUG_MOVE_SPEED_MULTIPLIER = 1.0
 
 -- 素女 3D 模型（D3 角色动画：官方库带骨骼古风女性，41 骨 Tripo Rig 标准骨架，
 --   可自动重定向官方 DefaultMale 人形动画（idle/walk/run），FSM 驱动）
