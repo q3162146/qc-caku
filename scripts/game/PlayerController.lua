@@ -82,12 +82,29 @@ local diagTime_ = 0.0
 local diagOneShot_ = false
 ---@type number
 local diag3Accum_ = 0.0
+---@type number
+local diag5Accum_ = 0.0
+---@type boolean
+local diag5Initialized_ = false
+---@type table<string, Vector3>
+local prevBoneRelativePositions_ = {}
 ---@type table<string, boolean>
 local diagReported_ = {}
 ---@type integer
 local sunuAnimationIndex_ = 1
----@type Vector3
-local prevPlayerPosition_ = Vector3.ZERO
+---@type string[]
+local sunuDiagnosticBones_ = {
+    "Root", "Hip", "Pelvis",
+    "L_Thigh", "L_Calf", "L_Foot", "L_ToeBase",
+    "L_CalfTwist01", "L_CalfTwist02", "L_ThighTwist01", "L_ThighTwist02",
+    "R_Thigh", "R_ThighTwist01", "R_ThighTwist02", "R_Calf", "R_Foot", "R_ToeBase",
+    "R_CalfTwist01", "R_CalfTwist02",
+    "Waist", "Spine01", "Spine02", "NeckTwist01", "NeckTwist02", "Head",
+    "L_Clavicle", "L_Upperarm", "L_Forearm", "L_ForearmTwist01", "L_ForearmTwist02", "L_Hand",
+    "L_UpperarmTwist01", "L_UpperarmTwist02",
+    "R_Clavicle", "R_Upperarm", "R_UpperarmTwist01", "R_UpperarmTwist02",
+    "R_Forearm", "R_ForearmTwist01", "R_ForearmTwist02", "R_Hand",
+}
 
 --- 统计官方动画原始轨道；运行时由 RuntimeRetargeter 按 source/target 骨架映射，不以同名轨道数判断重定向结果。
 ---@param anim Animation
@@ -136,7 +153,53 @@ local function UpdateSunuAnimation(movingIntent, runningIntent)
     end
 end
 
---- 创建玩家与相机
+---@param timeStep number
+local function UpdateSunuBoneDiagnostics(timeStep)
+    if sunuModel_ == nil then return end
+    diag5Accum_ = diag5Accum_ + timeStep
+    if diag5Accum_ < 0.5 then return end
+    diag5Accum_ = diag5Accum_ - 0.5
+
+    local skeleton = sunuModel_:GetSkeleton()
+    if skeleton == nil then return end
+    local movedCount = 0
+    local sampledCount = 0
+    for _, boneName in ipairs(sunuDiagnosticBones_) do
+        local bone = skeleton:GetBone(boneName)
+        if bone ~= nil and bone.node ~= nil then
+            local relativePosition = bone.node.worldPosition - playerNode_.worldPosition
+            local previous = prevBoneRelativePositions_[boneName]
+            if previous ~= nil then
+                local delta = relativePosition - previous
+                if delta:LengthSquared() > 0.00000001 then
+                    movedCount = movedCount + 1
+                end
+            end
+            prevBoneRelativePositions_[boneName] = relativePosition
+            sampledCount = sampledCount + 1
+        end
+    end
+
+    local currentAnimation = "无"
+    local animationTime = 0.0
+    local animationWeight = 0.0
+    if sunuController_ ~= nil and sunuController_:GetNumAnimations() > 0 then
+        local currentControl = sunuController_:GetAnimation(0)
+        if currentControl ~= nil then
+            currentAnimation = currentControl.name
+            animationTime = sunuController_:GetTime(currentAnimation)
+            animationWeight = sunuController_:GetWeight(currentAnimation)
+        end
+    end
+
+    if not diag5Initialized_ then
+        diag5Initialized_ = true
+        movedCount = 0
+    end
+    print(string.format("[诊断⑤] 移动骨骼=%d/%d | 当前动画=%s | animStateTime=%.2f | weight=%.2f",
+        movedCount, sampledCount, currentAnimation, animationTime, animationWeight))
+end
+
 ---@param scene Scene
 ---@return boolean
 function PlayerController.Create(scene)
@@ -148,6 +211,9 @@ function PlayerController.Create(scene)
     -- 玩家节点
     playerNode_ = scene:CreateChild("Player")
     prevPlayerPosition_ = playerNode_.worldPosition
+    prevBoneRelativePositions_ = {}
+    diag5Initialized_ = false
+    diag5Accum_ = 0.0
 
     -- 视觉：素女 3D 模型。D3 优先带骨骼版（AnimatedModel + FSM 播 idle/walk/run），
     --   加载失败回退旧静态网格（随节点整体转向/移动），再失败回退白模球，保玩法不破
@@ -460,7 +526,8 @@ function PlayerController.PostUpdate(timeStep)
             or controls:IsDown(CTRL_RIGHT)
         runningIntent = movingIntent and controls:IsDown(CTRL_RUN)
     end
-    UpdateSunuAnimation(actualSpeed, movingIntent, runningIntent)
+    UpdateSunuAnimation(movingIntent, runningIntent)
+    UpdateSunuBoneDiagnostics(timeStep)
 
     -- 诊断②：读取 AnimationController 实际动画状态权重和时间，不读取不存在的 FSM 状态。
     diagTime_ = diagTime_ + timeStep
