@@ -52,169 +52,82 @@ local PICKUP_RADIUS = 1.6        -- 走近拾取/交互半径（米；真机摇�
 local DEBUG_MOVE_SPEED_MULTIPLIER = 1.0
 
 -- 素女 3D 模型（D3 角色动画：官方库带骨骼古风女性，41 骨 Tripo Rig 标准骨架，
---   可自动重定向官方 DefaultMale 人形动画（idle/walk/run），FSM 驱动）
+--   使用官方 DefaultMale 原始 Bip001 动画，由引擎 RuntimeRetargeter 驱动）
 local SUNU_RIG_MODEL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Meshes/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064.mdl"
 local SUNU_RIG_MATERIAL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Materials/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064_00_tripo_material_a7ec7f07-66d8-4f3f-8f49-69d441544492.xml"
-local SUNU_FSM_FILE = "FSM/Sunu.fsm"
--- DWP 下载扩展（把 DownloadResources 等装到 cache；真机/预览按需下载 uuid 动画必需）
+-- DWP 下载扩展保留给其他运行时资源；动画本身走本地官方资源。
 require "urhox-libs.Engine.ResourceCacheExtensions"
 
--- FSM 引用的素女动画：本地 .ani 优先（真机必播保底，不依赖 DWP/uuid），
--- 与 Sunu.fsm / SunuMoveBlend.blendspace 的 _animationPaths 一一对应。
--- 来源：官方 AnimSet_DefaultMale 同名动画（CDN 下载，UANI 魔数校验通过）
+-- FSM 引用的素女动画：使用官方原始 Bip001 .ani，由引擎 RuntimeRetargeter
+-- 按 AnimationsMappings.json 自动映射到目标 Tripo 41 骨；不要替换成离线伪重定向产物。
 local SUNU_ANIM_LOCAL = {
-    "animation/DefaultMale_Idle.ani",         -- 站立待机
-    "animation/DefaultMale_WalkForward.ani",  -- 向前行走
-    "animation/DefaultMale_RunForward.ani",   -- 向前跑步
-}
--- DWP 预案：本地 .ani 缺失时回退的官方动画 uuid（DWP 按需下载）
-local SUNU_ANIM_URIS = {
-    "uuid://HIPCWSBd61v8PRI972Yksxzh",  -- 站立待机
-    "uuid://HhyjGZvHN9uF8lRsGnN_J7jc",  -- 向前行走
-    "uuid://FshxoWge4mzIJ-wmBu0GK6Vs",  -- 向前跑步
+    "animation/DefaultMale_Idle.ani",         -- 官方站立待机
+    "animation/DefaultMale_WalkForward.ani",  -- 官方向前行走
+    "animation/DefaultMale_RunForward.ani",   -- 官方向前跑步
 }
 -- 旧静态素女（rig 模型加载失败时的回退视觉，保玩法不破）
 local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619.mdl"
 local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
 local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉匹配
 
----@type AnimationStateMachine|nil
-local sunuFsm_ = nil
----@type AnimatedModel|nil 素女骨骼模型引用（诊断②动画状态数查询用）
+---@type AnimationController|nil
+local sunuController_ = nil
+---@type AnimatedModel|nil 素女骨骼模型引用（诊断与状态查询用）
 local sunuModel_ = nil
 
--- ── 四线诊断 + 手动兜底（真机"人物动画僵直"排查，2026-09-02）─────────────
----@type number 诊断累计时间（秒）
+-- ── 动画诊断（官方原始 Bip001 .ani → 引擎 RuntimeRetargeter）────────────
+---@type number
 local diagTime_ = 0.0
----@type boolean 诊断②一次性输出标记（~1 秒后，动画状态已建立）
+---@type boolean
 local diagOneShot_ = false
----@type boolean 看门狗是否已判定（~3 秒后一次性）
-local watchdogFired_ = false
----@type number 诊断③周期性输出计时（每 1 秒一行）
+---@type number
 local diag3Accum_ = 0.0
--- 诊断④ 骨架绑定统计（动画轨道名 ∩ 模型骨骼名）
---- @param anim Animation
---- @param skel Skeleton
---- @return integer bound
---- @return integer total
+---@type table<string, boolean>
+local diagReported_ = {}
+
+--- 统计官方动画原始轨道；运行时由 RuntimeRetargeter 按 source/target 骨架映射，不以同名轨道数判断重定向结果。
+---@param anim Animation
+---@param skel Skeleton
+---@return integer directTracks
+---@return integer totalTracks
 local function CountBoundTracks(anim, skel)
-    local bound, total = 0, anim:GetNumTracks()
-    for i = 0, total - 1 do
+    local directTracks, totalTracks = 0, anim:GetNumTracks()
+    for i = 0, totalTracks - 1 do
         local tr = anim:GetTrack(i)
         if tr ~= nil and skel:GetBone(tr.name) ~= nil then
-            bound = bound + 1
+            directTracks = directTracks + 1
         end
     end
-    return bound, total
+    return directTracks, totalTracks
 end
 
----@type integer 诊断/看门狗帧计数（PostUpdate 每帧 +1）
-local diagFrames_ = 0
----@type integer 手动兜底模式当前播放的动画索引（1=待机 2=走 3=跑）
-local manualClipIndex_ = 0
----@type boolean 手动兜底是否已激活（FSM 无输出时接管）
-local manualDriveActive_ = false
----@type AnimationController|nil
-local manualController_ = nil
----@type AnimationStateMachine|nil 兜底激活前先移除的 FSM 组件引用
-local fsmToRemove_ = nil
-
---- 激活手动兜底（方案 D）：移除 AnimationStateMachine（文档明令二者不可同节点并用），
---- 用 AnimationController 按 moveSpeed 手动切 idle/walk/run。只在 FSM 失效时调用一次。
-local function ActivateManualDrive()
-    if manualDriveActive_ then return end
-    manualDriveActive_ = true
-    if fsmToRemove_ ~= nil then
-        fsmToRemove_:Remove()
-        fsmToRemove_ = nil
-    end
-    sunuFsm_ = nil
-    if playerNode_ ~= nil then
-        local modelNode = playerNode_:GetChild("ModelNode")
-        if modelNode ~= nil then
-            manualController_ = modelNode:GetOrCreateComponent("AnimationController")
-        end
-    end
-    manualClipIndex_ = 0
-    print("[诊断②] 手动兜底已激活（移除FSM，AnimationController 接管）")
-    if manualController_ ~= nil then
-        manualController_:PlayExclusive(SUNU_ANIM_LOCAL[1], 0, true, 0.25)
-        manualClipIndex_ = 1
-    end
-end
-
---- 手动兜底（方案 D）：AnimationController 按 moveSpeed 直接切
---- idle/walk/run（PlayExclusive + 淡入），不依赖 FSM/BlendSpace，真机必播。
----@param speed number
-local function ManualDriveTick(speed)
-    if manualController_ == nil then return end
-    local idx = 1
-    if speed >= 3.5 then
-        idx = 3
-    elseif speed >= 0.5 then
-        idx = 2
-    end
-    if idx ~= manualClipIndex_ then
-        manualClipIndex_ = idx
-        local path = SUNU_ANIM_LOCAL[idx]
-        if path ~= nil then
-            manualController_:PlayExclusive(path, 0, true, 0.25)
-            print("[诊断②] 手动兜底切换动画 -> " .. path)
-        end
-    end
-end
-
---- 本地 .ani 是否全部可加载（真机必播保底的判据；入包资源走本地缓存，不依赖网络）
----@return boolean
-local function AreLocalAnimsReady()
-    local ready = true
-    for _, path in ipairs(SUNU_ANIM_LOCAL) do
-        ---@type Animation|nil
-        local anim = cache:GetResource("Animation", path)
-        if anim == nil then
-            print("[PlayerController] 警告：本地动画缺失: " .. path)
-            ready = false
-        else
-            print("[PlayerController] 本地动画就绪: " .. path)
-        end
-    end
-    return ready
-end
-
---- 启动素女动画 FSM（本地 .ani 就绪后调用；FSM 动画路径指向本地虚拟路径，
---- 不依赖 DWP/uuid，真机走/跑/停必播）
+--- 使用官方原始动画，由引擎 RuntimeRetargeter 负责 Bip001 -> Tripo 41 骨映射。
 ---@param modelNode Node
-local function StartSunuFSM(modelNode)
-    modelNode:GetOrCreateComponent("AnimationController")
-    local fsm = modelNode:CreateComponent("AnimationStateMachine")
-    ---@type JSONFile|nil
-    local fsmFile = cache:GetResource("JSONFile", SUNU_FSM_FILE)
-    if fsmFile ~= nil then
-        local loaded = fsm:LoadFromJSONFile(fsmFile)
-        fsm:Start()
-        sunuFsm_ = fsm
-        fsmToRemove_ = fsm
-        print("[PlayerController] 素女动画 FSM 已启动(load=" .. tostring(loaded)
-            .. " layers=" .. fsm:GetNumLayers() .. "): " .. SUNU_FSM_FILE)
-    else
-        print("[PlayerController] 警告：FSM 文件加载失败，模型静态: " .. SUNU_FSM_FILE)
-    end
+local function StartSunuAnimation(modelNode)
+    local controller = modelNode:GetOrCreateComponent("AnimationController")
+    sunuController_ = controller
+    controller:PlayExclusive(SUNU_ANIM_LOCAL[1], 0, true, 0.0)
+    print("[PlayerController] 素女动画控制器已启动（RuntimeRetargeter）: " .. SUNU_ANIM_LOCAL[1])
 end
 
---- DWP 预案（保底诊断通道）：本地 .ani 意外缺失时，尝试下载官方动画 uuid，
---- 结果写日志（真机排查 "cannot resolve/skip" 用）；FSM 已指向本地路径，
---- 下载成功与否都不再影响动画播放逻辑，动画保持静态回退不崩溃。
-local function FallbackDwpAnimDownload()
-    if cache.DownloadResources == nil then
-        print("[PlayerController] 无 DWP 下载 API，跳过动画 uuid 预案下载")
-        return
+--- 按实际速度切换官方原始动画；不使用 FSM，避免 FSM 与控制器同时写 AnimatedModel。
+---@param speed number
+local function UpdateSunuAnimation(speed)
+    if sunuController_ == nil then return end
+    local index = 1
+    if speed >= 3.5 then
+        index = 3
+    elseif speed >= 0.5 then
+        index = 2
     end
-    print("[PlayerController] 本地动画缺失 → 触发 uuid 预案下载（诊断通道，"
-        .. #SUNU_ANIM_URIS .. " 个）")
-    cache:DownloadResources(SUNU_ANIM_URIS, function(success, failed)
-        print("[PlayerController] uuid 预案下载结果: success=" .. tostring(success)
-            .. " failed=" .. tostring(failed))
-    end)
+    local path = SUNU_ANIM_LOCAL[index]
+    if path ~= nil and not sunuController_:IsPlaying(path) then
+        sunuController_:PlayExclusive(path, 0, true, 0.2)
+        if not diagReported_[path] then
+            diagReported_[path] = true
+            print("[诊断②] 控制器切换官方动画 -> " .. path .. " weight=" .. string.format("%.2f", sunuController_:GetWeight(path)))
+        end
+    end
 end
 
 --- 创建玩家与相机
@@ -260,40 +173,23 @@ function PlayerController.Create(scene)
             local hipBone = skel:GetBone("Hip")
             if hipBone ~= nil then hipBone.animated = false end
         end
-        -- 诊断①/④（一次性）：模型类型 + 每支本地动画轨道与骨架的绑定统计
-        print(string.format("[诊断①] 模型=AnimatedModel 骨骼数=%d rig=%s",
+        -- 诊断①：确认 AnimatedModel、目标骨骼和官方 RuntimeRetargeter 输入资源
+        print(string.format("[诊断①] 模型=AnimatedModel 骨骼数=%d rig=%s retarget=RuntimeRetargeter",
             skel ~= nil and skel:GetNumBones() or -1, SUNU_RIG_MODEL))
         if skel ~= nil then
             for _, path in ipairs(SUNU_ANIM_LOCAL) do
                 ---@type Animation|nil
                 local anim = cache:GetResource("Animation", path)
                 if anim == nil then
-                    print("[诊断④] 动画缺失 -> " .. path)
+                    print("[诊断④] 官方动画缺失 -> " .. path)
                 else
-                    local bound, total = CountBoundTracks(anim, skel)
-                    print(string.format("[诊断④] 轨道绑定 %d/%d (%s) len=%.2fs",
-                        bound, total, path, anim:GetLength()))
-                    if bound == 0 then
-                        print("[诊断④] 警告：该动画与骨架零绑定 → 播了也不动（僵直根因）")
-                    end
+                    local direct, total = CountBoundTracks(anim, skel)
+                    print(string.format("[诊断④] 官方轨道直连 %d/%d（其余由 RuntimeRetargeter 映射） (%s) len=%.2fs",
+                        direct, total, path, anim:GetLength()))
                 end
             end
         end
-        -- 动画状态机：idle(0)/walk(2)/run(5) BlendSpace，按 moveSpeed 混合。
-        -- 真机修复②：FSM 动画路径指向【本地入包 .ani】（项目 CDN，与模型同源可达），
-        -- 不再依赖 uuid 跨源解析（旧根因：uuid DWP 真机解析失败 → FSM 空动画 → 静态）。
-        -- Animation 为 DWP 占位热替换类型：立即启动 FSM，动画到包后自动热替换开播；
-        -- 资源彻底缺失则空动画静态回退（不崩）。不再用下载回调做启动门槛。
-        if AreLocalAnimsReady() then
-            -- 本地 .ani 入包资源走 ResourceCache 本地加载，不经 DWP 下载
-            -- （DWP 只解析远程资源，本地路径会报 cannot resolve，故不发起下载）
-            StartSunuFSM(modelNode)
-        else
-            -- 本地 .ani 不在包内（构建异常）：保留 uuid DWP 预案作诊断通道，
-            -- 同时仍启动 FSM（路径解析不到 → 空动画静态，保底不崩）
-            FallbackDwpAnimDownload()
-            StartSunuFSM(modelNode)
-        end
+        StartSunuAnimation(modelNode)
         rigLoaded = true
         print("[PlayerController] 素女骨骼模型已加载: " .. SUNU_RIG_MODEL)
     else
@@ -536,84 +432,52 @@ function PlayerController.PostUpdate(timeStep)
     if playerNode_ ~= nil and tpCamera_ ~= nil then
         tpCamera_:Update(timeStep, playerNode_, yaw_, pitch_)
     end
-    -- 喂 FSM：实际速度按临时提速倍数归一化，对齐 BlendSpace 点（0 待机/2 走/5 跑）
+    -- 单一动画驱动路径：速度由 CharacterComponent 计算，动画由官方原始 .ani + RuntimeRetargeter 播放。
     local speed = 0.0
     if character_ ~= nil then
         speed = character_:GetMoveSpeed() / DEBUG_MOVE_SPEED_MULTIPLIER
         if speed > 5.0 then speed = 5.0 end
     end
-    if sunuFsm_ ~= nil and character_ ~= nil then
-        sunuFsm_:SetFloat("moveSpeed", speed)
-        sunuFsm_:SetBool("isGrounded", character_:IsOnGround())
-    end
+    UpdateSunuAnimation(speed)
 
-    -- ── 诊断②③ + 看门狗（手动兜底方案 D）────────────────────────────
+    -- 诊断②：读取 AnimationController 实际动画状态权重和时间，不读取不存在的 FSM 状态。
     diagTime_ = diagTime_ + timeStep
-    diagFrames_ = diagFrames_ + 1
-
-    -- 诊断②（一次性，~1 秒后）：AnimatedModel 动画状态数 + 状态名/权重
     if not diagOneShot_ and diagTime_ >= 1.0 then
         diagOneShot_ = true
-        local states = sunuModel_ ~= nil and sunuModel_:GetNumAnimationStates() or 0
-        local curState = sunuFsm_ ~= nil and tostring(sunuFsm_:GetCurrentState(0)) or "无FSM"
-        local stateTime = sunuFsm_ ~= nil and sunuFsm_:GetStateTime(0) or -1
-        local w = -1.0
-        local ctrl = sunuModel_ ~= nil and sunuModel_:GetNode():GetComponent("AnimationController") or nil
-        if ctrl ~= nil and ctrl:GetNumAnimations() > 0 then
-            local ac = ctrl:GetAnimation(0)
-            if ac ~= nil then w = ctrl:GetWeight(ac.name) end
-        end
-        print(string.format("[诊断②] 动画状态=%d | FSM当前=%s stateTime=%.2f | 控制器动画数=%d 权重=%.2f",
-            states, curState, stateTime,
-            ctrl ~= nil and ctrl:GetNumAnimations() or 0, w))
-    end
-
-    -- 诊断③（周期 1 秒）：moveSpeed + FSM 状态/时间推进
-    diag3Accum_ = diag3Accum_ + timeStep
-    if diag3Accum_ >= 1.0 then
-        diag3Accum_ = diag3Accum_ - 1.0
-        if sunuFsm_ ~= nil and character_ ~= nil then
-            print(string.format("[诊断③] moveSpeed=%.2f | 状态=%s stateTime=%.2f norm=%.2f | grounded=%s",
-                speed, tostring(sunuFsm_:GetCurrentState(0)), sunuFsm_:GetStateTime(0),
-                sunuFsm_:GetNormalizedTime(0), tostring(character_:IsOnGround())))
-        elseif manualDriveActive_ then
-            print(string.format("[诊断③] moveSpeed=%.2f | 手动兜底播放中 clip=%d", speed, manualClipIndex_))
-        end
-    end
-
-    -- 看门狗（一次性，~3 秒后）：检查 AnimatedModel 是否有真正在播的动画状态。
-    -- 判据：动画状态数 >= 1 且存在权重 > 0.1 的状态 = 有声播出；否则判定僵死 → 手动兜底接管。
-    -- （FSM stateTime 会照常推进，不能当判据——旧事故就是"时间在走但骨头不动"）
-    if not watchdogFired_ and diagTime_ >= 3.0 then
-        watchdogFired_ = true
-        if sunuModel_ ~= nil then
-            local nStates = sunuModel_:GetNumAnimationStates()
-            local maxW = 0.0
-            local ctrl = sunuModel_:GetNode():GetComponent("AnimationController")
-            if ctrl ~= nil then
-                for i = 0, ctrl:GetNumAnimations() - 1 do
-                    local ac = ctrl:GetAnimation(i)
-                    if ac ~= nil then
-                        local w = ctrl:GetWeight(ac.name)
-                        if w > maxW then maxW = w end
+        local animationCount = sunuController_ ~= nil and sunuController_:GetNumAnimations() or 0
+        local activeName = "无"
+        local activeWeight = 0.0
+        local activeTime = 0.0
+        if sunuController_ ~= nil then
+            for i = 0, animationCount - 1 do
+                local control = sunuController_:GetAnimation(i)
+                if control ~= nil then
+                    local weight = sunuController_:GetWeight(control.name)
+                    if weight > activeWeight then
+                        activeWeight = weight
+                        activeName = control.name
+                        activeTime = sunuController_:GetTime(control.name)
                     end
                 end
             end
-            if nStates >= 1 and maxW > 0.1 then
-                print(string.format("[诊断②] 看门狗：动画状态=%d 最大权重=%.2f → 正常，保留 FSM",
-                    nStates, maxW))
-            else
-                print(string.format(
-                    "[诊断②] 看门狗：动画状态=%d 最大权重=%.2f → 判定无声播出，切换手动兜底",
-                    nStates, maxW))
-                ActivateManualDrive()
-            end
         end
+        print(string.format("[诊断②] AnimatedModel状态=%d | 当前=%s weight=%.2f time=%.2f | 驱动=AnimationController",
+            sunuModel_ ~= nil and sunuModel_:GetNumAnimationStates() or 0,
+            activeName, activeWeight, activeTime))
     end
 
-    -- 手动兜底驱动（激活后每帧按速度切动画）
-    if manualDriveActive_ then
-        ManualDriveTick(speed)
+    -- 诊断③：周期性回传移动速度和当前动画。
+    diag3Accum_ = diag3Accum_ + timeStep
+    if diag3Accum_ >= 1.0 then
+        diag3Accum_ = diag3Accum_ - 1.0
+        local currentAnimation = "无"
+        if sunuController_ ~= nil and sunuController_:GetNumAnimations() > 0 then
+            local currentControl = sunuController_:GetAnimation(0)
+            if currentControl ~= nil then currentAnimation = currentControl.name end
+        end
+        print(string.format("[诊断③] moveSpeed=%.2f | 当前动画=%s | grounded=%s",
+            speed, currentAnimation,
+            character_ ~= nil and tostring(character_:IsOnGround()) or "false"))
     end
 end
 
