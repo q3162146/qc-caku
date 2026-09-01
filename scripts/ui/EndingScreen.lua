@@ -37,11 +37,10 @@ local ENDING_COPY = {
     },
 }
 
+-- UI 精修 ②：制作名单删除"AI 辅助/感谢 Seedance"两行，仅保留正式条目
 local CREDITS = {
     "《桃素洛无幽 · 素女篇》",
     "一个关于等待、遗忘与重逢的故事。",
-    "文案与演出由 AI 辅助创作，",
-    "感谢 Seedance 让桃花真的会落，让眼泪真的会流。",
 }
 
 local LINE_COUNT = 3

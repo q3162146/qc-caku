@@ -279,12 +279,22 @@ function RenderChoice()
     local shell = StoryPanel.Wrap(inner)
     -- ② 三选整屏应景底：不再铺静态图，直接透出 3D 场景（D1 Skybox 即水墨全景）。
     --    panel 不设任何背景色，仅叠线性渐变压暗保证选项可读。
+    -- UI 精修 ③：大全身立绘 → 右侧圆形小头像（选项壳上方右侧空白处，不挡字幕/选项）；
+    --    18%×10%（720×1280 下 ≈130×128 近正圆；百分比宽+aspectRatio 在 Yoga 推不出高，
+    --    故直接用双百分比）+ borderRadius 大值圆形裁剪 + cover 裁头像 + transition 淡入；
+    --    头像随 npc（守桃老人/无面鬼/素女）切换。
     local portrait = UI.Panel {
         position = "absolute",
-        right = 0,
-        top = "12%",
-        width = "42%",
-        height = "58%",
+        right = "5%",
+        top = "46%",   -- 右侧空白区（选项壳上方），不压字幕/选项
+        width = "18%",
+        height = "10%",
+        borderRadius = 1000,
+        borderWidth = 2,
+        borderColor = { 210, 176, 128, 160 },
+        backgroundFit = "cover",
+        opacity = 0,
+        transition = "opacity 0.3s easeOut",
         pointerEvents = "none",
     }
     local dimmer = UI.Panel {
@@ -312,8 +322,9 @@ function RenderChoice()
     panel:AddChild(portrait)
     panel:AddChild(shell)
     mountRoot(panel)
-    -- 右侧立绘：挂树后设图（NPC 辨识保留）
+    -- 右侧头像：挂树后设图（随 npc 切换），再置 opacity=1 触发淡入
     portrait:SetBackgroundImage(npcPortrait())
+    portrait:SetStyle({ opacity = 1 })
 end
 
 ---@param choiceKey string|nil

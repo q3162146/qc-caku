@@ -135,17 +135,20 @@ function ChapterCard.Create(uiRoot)
         borderRadius = 10,
         backgroundColor = { 30, 26, 24, 255 },
     }
+    -- UI 精修 ①：章回名 20→32（同色细描边模拟加粗），副题 14→20，真机醒目可读
     titleLabel_ = UI.Label {
         text = "",
-        fontSize = 20,
+        fontSize = 32,
         fontColor = { 246, 241, 231, 255 },
         textAlign = "center",
         width = "100%",
+        whiteSpace = "normal",
+        textStroke = { width = 1.2, color = { 246, 241, 231, 255 } },
     }
     sealLabel_ = UI.Label {
         text = "",
-        fontSize = 14,
-        fontColor = { 190, 160, 130, 255 },
+        fontSize = 20,
+        fontColor = { 200, 172, 140, 255 },
         textAlign = "center",
         width = "100%",
         maxLines = 2,
