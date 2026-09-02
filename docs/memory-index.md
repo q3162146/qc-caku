@@ -5,9 +5,9 @@
 # 项目记忆索引
 
 项目：桃素洛无幽·素女篇
-当前版本：v0.3.9-ui（统一底部面板 + 封面/章卡/字幕）
-简述：TapTap 制造 × Seedance 主题赛单机叙事游戏。本轮：对话/三选共用外壳；台词 2 行分页；字幕半透明 2 行；三选右侧立绘；主菜单素女封面分层；章节卡整屏场景底。
-最后巩固：2026-08-30
+当前版本：v0.3.10-review
+简述：TapTap 制造 × Seedance 主题赛单机叙事游戏。本轮：游戏说明统一改为自动存档口径；主菜单新增剧情回顾入口；新增按章回分段的完整剧情滚动面板，保留既有主链/三选/信念/结局/存读档逻辑不变。
+最后巩固：2026-09-02
 
 ## 项目概况
 - UrhoX Lua 单机项目，唯一入口 `scripts/main.lua`。
@@ -27,12 +27,11 @@
 ## 关键文件
 | 文件 | 用途 |
 |------|------|
-| `scripts/main.lua` | 单机校验、竖屏方向请求、生命周期诊断、调试键（含 F6 触发 VideoSpike）与唯一入口 |
-| `scripts/game/InputManager.lua` | 输入抽象层 |
-| `scripts/game/PlayerController.lua` | 移动、相机、角色碰撞；竖屏镜头（distance 6.8/offset.y 2.3/fov 52）与视觉球体 (0.45,0.6,0.45)@y0.65 |
-| `scripts/game/SceneManager.lua` | 三场景 9:16 纵深白模 + 后墙外移（朝阳 32/桃林洛水 29）与 SceneRoot 生命周期 |
-| `scripts/game/WhiteBox.lua` | 白模几何、材质、可配置宽深边界墙、碰撞 |
-| `scripts/experiments/VideoSpike.lua` | 视频生命周期 Spike 独立实验模块（5 场景串行 + 后台/前台订阅）；S9 前应移除 |
+| `scripts/config/StoryReview.lua` | 按章回分段的完整剧情回顾文本 |
+| `scripts/ui/StoryReview.lua` | 主菜单剧情回顾 Modal + ScrollView |
+| `scripts/ui/GameGuide.lua` | 首次操作提示与游戏说明；存档口径为自动存档 |
+| `scripts/ui/MainMenu.lua` | 封面主菜单；开始/继续/游戏说明/剧情回顾入口 |
+| `scripts/main.lua` | 单机校验、初始化并挂载持久 HUD UI |
 | `scripts/config/PlayerData.lua` | 固定字段和类型兜底；含 mediaPos（节点/视频/断点/秒数契约） |
 | `scripts/config/Chapters.lua` | 段落表 |
 | `scripts/flow/FlowController.lua` | 统一结果消费与段落推进 |
@@ -64,6 +63,10 @@
 
 ## 避雷清单
 - 一次会话只做一个 S 任务；结束时让 TTM 复盘代码并列待办。
+- 新增剧情回顾或说明等叠加 UI 必须挂到持久 HUD Root，禁止调用 `UI.SetRoot` 替换现有树；使用一次创建、`Show/Hide` 或 Modal `Open/Close`。
+- 剧情回顾长文本必须使用 `UI.ScrollView`，并设置固定/受约束高度；`flexGrow` 场景需配 `flexBasis=0`。
+- 自动存档说明不得暗示存在手动存档按钮；主菜单只提供「继续游戏」入口。
+- 一次会话只做一个 S 任务；结束时让 TTM 复盘代码并列待办。
 - 22 的视频/音频规格是首轮兼容性测试起点；23 字符集共 1441 字符，正文不用书法体。
 - 剧情播放器 1 个，带循环背景最多 2 个；播完 Destroy/Dispose。
 - 分享卡先预生成三张，真机确认后再做运行时分享。
@@ -80,7 +83,7 @@
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
-- 2026-08-31 **对话 UI 二次整改（本会话）**：新增 `StoryPanel` 统一底部外壳（宽 92%/底 3%/高≥28%/圆角 16/暖棕灰半透明）。对话台词固定 2 行、超长按 14 字分页；人名字号 16、台词 24。视频章回名/字幕条改为半透明并抬高到底部 8%，字幕 2 行+描边。三选全屏场景底+右侧立绘+同一外壳。主菜单去掉居中卡片，素女立绘全屏、标题叠上、按钮沉底。章节卡四周改场景底，水墨卡+印章保留。LSP / 官方构建见本轮。⚠️ 真机截图仍待补。
+- 2026-09-02 **自动存档指引 + 剧情回顾（本会话，提交 `d7b4030`）**：`GameGuide` 将「右上存档/继续」改为「游戏会自动存档，随时可从主菜单『继续游戏』继续」，未新增存档按钮；新增 `config/StoryReview.lua` 七段完整章回剧情（楔子、第一至五回、尾声三结局）与 `ui/StoryReview.lua` 滚动 Modal；`MainMenu` 新增「剧情回顾」按钮，`main` 将其挂到持久 HUD Root。LSP 目标文件 0 Error，官方构建成功，validate 报告 `lua_errors=0`；本地截图命令受运行环境超时未产出 PNG。字体缺失（NotoSansSC/MiSans）为既有项目资源基线问题，非本轮引入。已推 GitHub `main`。
 - 2026-08-31 **对话 UI 整改 ①②③**：新增 `VideoSubtitles.lua`（S1~S9 分段旁白）；`MediaPlayer` 顶部章回名 + 底部字幕条（fontSize 22，半透明暖底），S6 断点三选遮罩改为半透明不再纯黑。`DialogueUI` 对白框暖色半透明、对白 22 / 旁白 26；三选全屏应景 `backgroundImage`（场景图/立绘）+ 底部选项浮层。④ 白模→真模未做：玩家仍 Sphere、老人圆柱+球、三场景 WhiteBox，需独立排期（生成/导入模型并锁交互坐标）。LSP / 官方构建见本轮。⚠️ 真机截图/录屏仍待补。
 - 2026-08-31 **发布前低风险清理**：`VIDEO_SOURCES` 删除未引用 `S6/S10~S13`（主链只用 `S6-1..5` + `S7/S8/S9`）；`main.lua` 去掉 `VideoSpike`/`F6`；Spike 模块与三档测试片、CGT 中间产物、章节卡源图、剧情尾帧移出 `assets/`/`scripts/` 到 `_dev/`（全量 `**` 引用不再打进包）。竖屏 `SetOrientations("Portrait")` + `taptap_publish.screen_orientation=portrait` 仍在。主链视频/配音/音效/章节卡路径字面量均存在。F5/F7–F10/F2–F4 键盘调试键保留（画面无按钮）。LSP / 官方构建见本轮结果。⚠️ 真机整链与三轴结局仍待补；增强引用（`scripts/**`）未切，需用户确认。
 - 2026-08-30 **真机验收遗留 3 项**：① `EnterParagraph` 对 `p.type=="end"` 跳过章节卡（P43/44/45→P99 不再闪 ch1「收集·朝阳之谷」）；② P11 只认 `hotspots` 五行花、按 `blossoms` 去重计数，忽略 `Int_oldman`；fire 移到 `(4.5,0.6,-6)` 主路东侧，拾取半径 1.1→1.6。③ 去掉 Spike/断点/S6链/完成/保存/读档触屏按钮、场景横幅、SaveMenu 常驻入口、GameHUD Run/Jump；保留移动摇杆+滑动视角（真机探索必需）与主菜单开始/继续。LSP 0 Error、官方构建成功。⚠️ 真机复验：P99 前不弹章卡、5 朵=5 独白含 fire、调试 HUD 已清。
@@ -138,7 +141,7 @@
 - v0.1.0：创建单机白模骨架，完成三场景、PlayerData、Chapters、Flow、移动相机与基础碰撞。
 
 ## 下一步
-0. **当前最优先：真机最终回归（发布前）**。完整主链 P01→P99、三结局各一次、存读档「继续游戏」、章节卡/配音/音效/三选锁定。本环境无解码器、无真机通道，不能伪报通过。
+0. **当前最优先：真机最终回归（发布前）**。完整主链 P01→P99、三结局各一次、存读档「继续游戏」、章节卡/配音/音效/三选锁定。本环境无解码器、无真机通道，不能伪报通过。剧情回顾需真机补验：主菜单入口、滚动完整七章、关闭后可继续选择。
 1. **同步管道已就绪（2026-08-25）**：S6 代码已合入并推权威仓。TTM `git push github main`，本机 `git fetch github && git rebase github/main`。PAT 值只在 TTM 环境，**不进对话**。
 1. **S6 媒体模块（主要闭环已完成）**：MediaPlayer 状态机 + 断点 Hook（DEBUG_BREAKPOINT_TEST @4.0 三选）+ 冻结自愈 + mediaPos 断点续写/断点不重复/强制 ENDED/显式释放，真机两轮（21:53、22:21 break2.log）全链路 ✅。**剩余验证（代码已备好，待真机/WASM 回归）**：S6 连续 5 段（ch3/P32~P36 已接线，F10 直切，S6-x 占位素材）、完整读档恢复（磁盘 Save/Load(slot1) + 启动自动续档 + F8/F9）、后台冻结自愈（22:21 顺带验证恢复续播）。回归项见素材包/`TTM-S6回归粘贴块-读档与5段.md`。
   - **2026-08-26 更新**：真机 `break2.log`（08-25 22:21）在断点三选命中 `media/MediaPlayer:140 Attempt to call a non-callable object (global 'log')`，已修复并推 `github`（`0871bfe`）；TTM 已同步/官方构建/本地 140 帧 0 错、B 项接线静态 ✅。**真机视频播放+点击仍未跑**（TTM 环境无解码器 `ERROR_NO_DECODER`）→ 仍需真机补测：断点三选点击（确认崩溃消失）+ A 项读档恢复。
