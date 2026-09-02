@@ -19,6 +19,8 @@
 
 - [AB-010] [跨项目] [UrhoX UI] 三选头像若要求位于底板右下，必须将 portrait 作为 `StoryPanel.Wrap()` 返回的 shell 子节点，再用 shell 内的百分比 `right/bottom` 定位；不要把 portrait 与 shell 作为全屏 panel 的同级子节点，否则百分比会相对屏幕定位。
 
+- [AB-011] [跨项目] [UrhoX UI] 三选头像靠近提示文案时，先让头像成为底板 shell 子节点，再使用 shell 内 `right/top` 百分比定位，尺寸控制在 90px 左右；同时检查提示文本最大宽度，避免头像覆盖提示。
+
 ## 同步记录
 
 最近一次同步：2026-09-03 桃素洛无幽·素女篇

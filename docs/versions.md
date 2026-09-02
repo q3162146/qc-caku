@@ -5,6 +5,7 @@
 
 | 版本 | 日期 | 变更摘要 |
 |------|------|---------|
+| v0.3.15-avatar-top | 2026-09-03 | 三选头像移到 StoryPanel 面板右上提示右侧（right 3%、top 8%、90×90）；LSP 0 Error、官方构建成功、60 帧 lua_errors=0 |
 | v0.3.14-avatar-shell | 2026-09-03 | 三选头像作为 StoryPanel 子节点，定位在底板右下空白区（right 3%、bottom 8%、100×100）；LSP 0 Error、官方构建成功、60 帧 lua_errors=0 |
 | v0.3.13-avatar-center-save | 2026-09-03 | 三选头像移动到对白面板中部右侧红框区域；存档保留 File(path, mode) 官方构造方式并用 DirExists 处理目录，修复 savedata slot1 打开错误。LSP 0 Error、官方构建成功、60 帧 lua_errors=0 |
 | v0.3.12-avatar-save | 2026-09-03 | 三选头像移入对白框右下红框区域；修复 saves 目录已存在时误判 CreateDir 返回值导致存档打开失败。LSP 0 Error、官方构建成功、60 帧 lua_errors=0 |
