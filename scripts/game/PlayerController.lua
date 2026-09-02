@@ -48,7 +48,11 @@ local MOUSE_SENSITIVITY = 0.15   -- 鼠标灵敏度（度/像素）
 local PITCH_LIMIT = 80.0
 local PICKUP_RADIUS = 1.6        -- 走近拾取/交互半径（米；真机摇杆走近需略大于白模球体）
 
--- 移动速度倍数（D 阶段真机测试曾临时 ×4，已恢复 1.0 正式值）
+-- 正式移动速度（米/秒）：直接设置舒适基础值，不依赖调试倍率
+local WALK_SPEED = 3.0
+local RUN_SPEED = 6.5
+
+-- 调试速度倍率保留为 1.0；正式速度不再使用该倍率缩放
 local DEBUG_MOVE_SPEED_MULTIPLIER = 1.0
 
 -- 素女 3D 模型（D3 角色动画：官方库带骨骼古风女性，41 骨 Tripo Rig 标准骨架，
@@ -70,8 +74,9 @@ local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736
 local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
 local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉匹配
 local SUNU_FAKE_ANIMATION = true -- 真机骨骼未驱动时启用节点级动感兜底
-local SUNU_FAKE_WALK_FREQ = 5.2
-local SUNU_FAKE_RUN_FREQ = 8.0
+-- B 假动画节奏：随基础速度略微提高，但保持舒适，不直接追随速度倍增
+local SUNU_FAKE_WALK_FREQ = 5.6
+local SUNU_FAKE_RUN_FREQ = 8.4
 
 ---@type AnimationController|nil
 local sunuController_ = nil
@@ -363,18 +368,13 @@ function PlayerController.Create(scene)
     character_ = playerNode_:CreateComponent("CharacterComponent")
     character_:SetAirControlFactor(0.6)
     character_:SetEnableWalkMode(true)      -- 默认步行，Shift 跑步
+    character_:SetWalkSpeed(WALK_SPEED)
+    character_:SetRunSpeed(RUN_SPEED)
     character_.autoRotateToMoveDir = true   -- 探索模式：面向移动方向
     character_.rotationSpeed = 1440.0
 
-    -- ⚠️ D 阶段真机测试临时提速（发布前恢复：DEBUG_MOVE_SPEED_MULTIPLIER = 1.0）
-    if DEBUG_MOVE_SPEED_MULTIPLIER ~= 1.0 then
-        local w = character_.walkSpeed * DEBUG_MOVE_SPEED_MULTIPLIER
-        local r = character_.runSpeed * DEBUG_MOVE_SPEED_MULTIPLIER
-        character_:SetWalkSpeed(w)
-        character_:SetRunSpeed(r)
-        print("[PlayerController] 临时提速 x" .. DEBUG_MOVE_SPEED_MULTIPLIER
-            .. " walk=" .. w .. " run=" .. r)
-    end
+    print(string.format("[PlayerController] 移动速度已设置 | walk=%.1f m/s | run=%.1f m/s | debugMultiplier=%.1f",
+        WALK_SPEED, RUN_SPEED, DEBUG_MOVE_SPEED_MULTIPLIER))
 
     -- 第三人称相机
     -- R12（2026-08-22）：拉远 + 抬升 + 加宽视角，缩小玩家占屏（真机复核占屏 1/4~1/3 → 修复）
