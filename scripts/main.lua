@@ -34,6 +34,7 @@ local MusicMap = require "config.MusicMap"
 local PetalRain = require "game.PetalRain"
 local BlossomGlow = require "game.BlossomGlow"
 local UI = require "urhox-libs/UI"
+local GameGuide = require "ui.GameGuide"
 
 ---@type Scene|nil
 local scene_ = nil
@@ -191,6 +192,8 @@ function Start()
     GameAudio.Init(scene_)
     EndingScreen.Create(UI.GetRoot())
     ChapterCard.Create(UI.GetRoot())
+    GameGuide.Create(UI.GetRoot())
+    GameGuide.SetData(data)
     EndingScreen.SetOnReturn(function()
         -- 结局回主菜单：恢复主题曲 + 落花氛围还原
         GameAudio.PlayMusic(MusicMap.menu)
@@ -242,12 +245,13 @@ function HandleUpdate(eventType, eventData)
     GameAudio.Tick(timeStep)      -- dt 驱动 BGM 换曲淡入淡出
     PetalRain.Update(timeStep)    -- 落花发射器跟随玩家 XZ
     BlossomGlow.Update(timeStep)  -- 桃花呼吸发光/靠近高亮脉冲
+    GameGuide.Update(timeStep)
     if ChapterCard.IsOpen() then
         ChapterCard.Update(timeStep)
     end
 
-    if DialogueUI.IsOpen() or MainMenu.IsOpen() or EndingScreen.IsOpen() or ChapterCard.IsOpen() then
-        PlayerController.ClearMovement()  -- 锁定移动（防摇杆在对话/菜单/结局卡/章节卡中串台）
+    if DialogueUI.IsOpen() or MainMenu.IsOpen() or EndingScreen.IsOpen() or ChapterCard.IsOpen() or GameGuide.IsOpen() then
+        PlayerController.ClearMovement()  -- 锁定移动（防摇杆在对话/菜单/结局卡/章节卡/指引中串台）
         if DialogueUI.IsOpen() then
             DialogueUI.HandleInput()
         end

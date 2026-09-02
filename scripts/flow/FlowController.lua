@@ -25,6 +25,7 @@ local PlayerController = require "game.PlayerController"
 local MediaPlayer = require "media.MediaPlayer"
 local ChapterCard = require "ui.ChapterCard"
 local GameAudio = require "audio.GameAudio"
+local GameGuide = require "ui.GameGuide"
 
 local FlowController = {}
 
@@ -160,6 +161,10 @@ function EnterParagraph()
     -- 视频播放时的精确 timeSec 由 MediaPlayer 在断点/暂停/后台离散点持久化。
     data_.mediaPos.node = p.id
     PlayerData.Save(data_)
+
+    if state_.paragraph.id == "P02" and type(data_) == "table" then
+        GameGuide.ShowIntro(data_)
+    end
 
     -- 按类型处理
     -- 仅 explore 段启用作近拾取/交互（防其它段刷屏），由 PlayerController 维护进入半径边沿

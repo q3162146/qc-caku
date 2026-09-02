@@ -10,6 +10,7 @@ local MediaPlayer = require "media.MediaPlayer"
 local EndingScreen = require "ui.EndingScreen"
 local GameAudio = require "audio.GameAudio"
 local StoryPanel = require "ui.StoryPanel"
+local GameGuide = require "ui.GameGuide"
 
 local MainMenu = {}
 
@@ -132,6 +133,17 @@ function MainMenu.Create(uiRoot)
             doContinue()
         end,
     }
+    local guideBtn = UI.Button {
+        text = "游戏说明",
+        variant = "secondary",
+        width = "100%",
+        height = StoryPanel.BTN_HEIGHT,
+        marginTop = 10,
+        onClick = function()
+            GameAudio.PlaySfx("audio/sfx/sfx_ui_click.mp3")
+            GameGuide.ShowHelp()
+        end,
+    }
     local actions = UI.Panel {
         position = "absolute",
         left = "8%",
@@ -149,6 +161,7 @@ function MainMenu.Create(uiRoot)
                 end,
             },
             continueBtn_,
+            guideBtn,
         },
     }
     root_:AddChild(dim)

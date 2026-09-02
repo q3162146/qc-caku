@@ -29,6 +29,7 @@ function PlayerData.New()
         ending = "",        -- "reunion" / "release" / "legend"
         endingsSeen = {},   -- 结局收集（标题 0/3）
         playCount = 0,      -- 通关次数
+        tutorial_seen = false, -- P02 首次操作提示是否已显示
         mediaPos = {        -- 媒体位置（读档/断点恢复契约；剧情视频播放/暂停时写入）
             node = "",      -- 当前段落 id（如 "P22"）
             video = "",     -- 当前视频 id（如 "S5"）
@@ -98,6 +99,7 @@ function PlayerData.Sanitize(raw)
     -- ending / playCount
     if type(raw.ending) == "string" then data.ending = raw.ending end
     if type(raw.playCount) == "number" then data.playCount = raw.playCount end
+    if type(raw.tutorial_seen) == "boolean" then data.tutorial_seen = raw.tutorial_seen end
 
     -- mediaPos：媒体恢复契约
     if type(raw.mediaPos) == "table" then
