@@ -279,14 +279,13 @@ function RenderChoice()
     local shell = StoryPanel.Wrap(inner)
     -- ② 三选整屏应景底：不再铺静态图，直接透出 3D 场景（D1 Skybox 即水墨全景）。
     --    panel 不设任何背景色，仅叠线性渐变压暗保证选项可读。
-    -- UI 精修：头像放在对白框中部右侧的红框位置，不再悬浮在面板外。
+    -- UI 精修：头像作为 StoryPanel shell 子节点，固定在底板右下空白区。
     local portrait = UI.Panel {
         position = "absolute",
-        right = "8%",
-        top = "50%",
-        width = 112,
-        height = 112,
-        transform = "translateY(-50%)",
+        right = "3%",
+        bottom = "8%",
+        width = 100,
+        height = 100,
         borderRadius = 1000,
         borderWidth = 2,
         borderColor = { 210, 176, 128, 190 },
@@ -294,6 +293,7 @@ function RenderChoice()
         opacity = 0,
         transition = "opacity 0.3s easeOut",
         pointerEvents = "none",
+        zIndex = 2,
     }
     local dimmer = UI.Panel {
         position = "absolute",
@@ -316,11 +316,11 @@ function RenderChoice()
         height = "100%",
         pointerEvents = "box-none",
     }
+    shell:AddChild(portrait)
     panel:AddChild(dimmer)
-    panel:AddChild(portrait)
     panel:AddChild(shell)
     mountRoot(panel)
-    -- 右侧头像：挂树后设图（随 npc 切换），再置 opacity=1 触发淡入
+    -- 头像挂入底板后设图（随 npc 切换），再置 opacity=1 触发淡入
     portrait:SetBackgroundImage(npcPortrait())
     portrait:SetStyle({ opacity = 1 })
 end

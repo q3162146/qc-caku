@@ -17,6 +17,8 @@
 
 - [AB-009] [跨项目] [UrhoX 存档] `FileSystem:CreateDir()` 返回 false 可能表示目录已存在，不能直接当作创建失败；保存前先用 `DirExists()`，仅在创建后目录仍不存在时失败，再打开相对存档路径。
 
+- [AB-010] [跨项目] [UrhoX UI] 三选头像若要求位于底板右下，必须将 portrait 作为 `StoryPanel.Wrap()` 返回的 shell 子节点，再用 shell 内的百分比 `right/bottom` 定位；不要把 portrait 与 shell 作为全屏 panel 的同级子节点，否则百分比会相对屏幕定位。
+
 ## 同步记录
 
 最近一次同步：2026-09-03 桃素洛无幽·素女篇
