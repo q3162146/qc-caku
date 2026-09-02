@@ -11,6 +11,7 @@ local EndingScreen = require "ui.EndingScreen"
 local GameAudio = require "audio.GameAudio"
 local StoryPanel = require "ui.StoryPanel"
 local GameGuide = require "ui.GameGuide"
+local StoryReview = require "ui.StoryReview"
 
 local MainMenu = {}
 
@@ -144,6 +145,17 @@ function MainMenu.Create(uiRoot)
             GameGuide.ShowHelp()
         end,
     }
+    local reviewBtn = UI.Button {
+        text = "剧情回顾",
+        variant = "secondary",
+        width = "100%",
+        height = StoryPanel.BTN_HEIGHT,
+        marginTop = 10,
+        onClick = function()
+            GameAudio.PlaySfx("audio/sfx/sfx_ui_click.mp3")
+            StoryReview.Show()
+        end,
+    }
     local actions = UI.Panel {
         position = "absolute",
         left = "8%",
@@ -162,6 +174,7 @@ function MainMenu.Create(uiRoot)
             },
             continueBtn_,
             guideBtn,
+            reviewBtn,
         },
     }
     root_:AddChild(dim)

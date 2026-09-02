@@ -152,7 +152,7 @@ function GameGuide.Create(uiRoot)
         width = "100%",
     })
     content:AddChild(UI.Label {
-        text = "右上存档/继续。\n《桃素洛无幽·素女篇》——一个关于等待、遗忘与重逢的故事。",
+        text = "游戏会自动存档，随时可从主菜单「继续游戏」继续。\n《桃素洛无幽·素女篇》——一个关于等待、遗忘与重逢的故事。",
         fontSize = 17,
         lineHeight = 1.45,
         fontColor = { 245, 239, 228, 255 },

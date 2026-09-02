@@ -35,6 +35,7 @@ local PetalRain = require "game.PetalRain"
 local BlossomGlow = require "game.BlossomGlow"
 local UI = require "urhox-libs/UI"
 local GameGuide = require "ui.GameGuide"
+local StoryReview = require "ui.StoryReview"
 
 ---@type Scene|nil
 local scene_ = nil
@@ -193,6 +194,7 @@ function Start()
     EndingScreen.Create(UI.GetRoot())
     ChapterCard.Create(UI.GetRoot())
     GameGuide.Create(UI.GetRoot())
+    StoryReview.Create(UI.GetRoot())
     GameGuide.SetData(data)
     EndingScreen.SetOnReturn(function()
         -- 结局回主菜单：恢复主题曲 + 落花氛围还原
