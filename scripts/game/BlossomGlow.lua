@@ -173,7 +173,7 @@ function BlossomGlow.Update(dt)
     -- 存活过滤：采集移除（node:Remove()）后父级为 nil，惰性清理注册表
     local alive = {}
     for _, e in ipairs(entries_) do
-        if e.bNode:GetParent() ~= nil then
+        if e ~= nil and e.bNode ~= nil and e.bNode:GetParent() ~= nil then
             table.insert(alive, e)
 
             -- 靠近检测 → 高亮（外壳放大 + 点光增亮）

@@ -367,6 +367,7 @@ end
 --- 场景 1：朝阳谷口（明亮，桃花漫山）
 --- ============================================================================
 function BuildChaoyangGukou(root)
+    -- 真机白模验证：直接构建远景时不再创建竖直光柱；桃花由 BlossomGlow 发光组辨识。
     local scene_ = root
     -- 地面：暖金色（D2 调色贴朝阳远景画雾带 0.90/0.84/0.74）
     -- 真机修复 ②：墙加厚 1.5 外移后，地面扩到墙外沿（2×10.5/2×34）盖住墙脚缝隙
@@ -374,7 +375,7 @@ function BuildChaoyangGukou(root)
 
     -- 无涕桃（中央，略大）
     WhiteBox.PeachTree(scene_, "WutiTao", Vector3(0, 0, 0), 1.6)
-    -- 终局点缀：无涕桃周围一圈矮石板 + 粉/白光柱（不改树本身，ch0/ch1 采集不受影响）
+    -- 终局点缀：无涕桃周围一圈矮石板（只留自然石板，不创建竖直光柱）
     local ring = {
         { Vector3(2.4, 0.12, 0.0),  { 0.96, 0.82, 0.86 } },
         { Vector3(-2.4, 0.12, 0.0), { 0.96, 0.88, 0.90 } },
@@ -386,9 +387,8 @@ function BuildChaoyangGukou(root)
         { Vector3(-1.7, 0.12, -1.7),{ 0.96, 0.88, 0.90 } },
     }
     for i, item in ipairs(ring) do
-        local pos, rgb = item[1], item[2]
+        local pos = item[1]
         WhiteBox.Box(scene_, "WutiTaoRing" .. i, pos, Vector3(0.55, 0.24, 0.55), { 0.72, 0.62, 0.52 })
-        WhiteBox.Beacon(scene_, "Beacon_WutiTao_" .. i, Vector3(pos.x, 0.4, pos.z), rgb, 1.1)
     end
     -- 无涕桃柔和点光（局部点缀，不改主光基调）
     local taoLightNode = scene_:CreateChild("WutiTaoGlow")
@@ -441,15 +441,12 @@ function BuildChaoyangGukou(root)
     WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
         { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true,
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
-    -- 守桃老人辨识光柱（白模下让人一眼看出"走近这位老人交互"）
-    WhiteBox.Beacon(scene_, "Beacon_oldman", Vector3(oldManPos.x, 0.6, oldManPos.z), { 0.95, 0.82, 0.45 }, 2.4)
-    -- 献花前氛围：老人旁暖色矮灯（不改 Int_oldman / Beacon_oldman）
+    -- 老人交互由 Int_oldman 触发；只保留自然灯具与局部暖光，不创建竖直光柱。
+    local lampLightNode = scene_:CreateChild("OldManWarmLight")
     WhiteBox.Cylinder(scene_, "OldManLampPost",
         Vector3(oldManPos.x + 1.4, 0.7, oldManPos.z - 0.6), 0.16, 1.4, { 0.42, 0.32, 0.24 })
     WhiteBox.Sphere(scene_, "OldManLamp",
         Vector3(oldManPos.x + 1.4, 1.55, oldManPos.z - 0.6), 0.28, { 1.0, 0.82, 0.48 }, { unlit = true })
-    WhiteBox.Beacon(scene_, "Beacon_oldman_lamp",
-        Vector3(oldManPos.x + 1.4, 0.4, oldManPos.z - 0.6), { 1.0, 0.78, 0.42 }, 1.2)
     local lampLightNode = scene_:CreateChild("OldManWarmLight")
     lampLightNode.position = Vector3(oldManPos.x + 1.4, 1.6, oldManPos.z - 0.6)
     local lampLight = lampLightNode:CreateComponent("Light")
@@ -464,7 +461,7 @@ function BuildChaoyangGukou(root)
     -- D2 调色：暖金贴朝阳远景画雾带
     WhiteBox.BoundaryWalls(scene_, 8.5, 32.0, 3.0, { 0.74, 0.63, 0.50 })
 
-    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发/光柱原位不动） ==========
+    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发原位不动） ==========
     -- 无涕桃 → 真实桃树（原白模树冠顶 ≈3.0m → 模型等比 3.4；树干圆柱碰撞保留）
     SwapToProp(scene_, GetNodes(scene_, { "WutiTao_Trunk", "WutiTao_Canopy", "WutiTao_Canopy2" }),
         "WutiTao_Visual", "peach_tree", Vector3(0, 0, 0), 3.4, 20)
@@ -559,7 +556,7 @@ function BuildGuNeiTaoLin(root)
     -- D2 调色：青绿清幽贴桃林远景雾带
     WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, { 0.50, 0.56, 0.46 })
 
-    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发/光柱原位不动） ==========
+    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发原位不动） ==========
     -- 守桃老人屋 → 真实老屋（碰撞盒 5×2.4×4.5 保留，视觉贴地覆盖盒体）
     SwapToProp(scene_, GetNodes(scene_, { "OldManHouse", "OldManHouseRoof" }),
         "OldManHouse_Visual", "old_house", Vector3(-4, 0, -14), { x = 5.2, y = 3.3, z = 5.2 }, 15)
@@ -636,14 +633,13 @@ function BuildLuoShuiYinShan(root)
     WhiteBox.Box(scene_, "SpringFrame", Vector3(-5.2, 1.15, 14), Vector3(2.0, 0.22, 2.0), { 0.30, 0.32, 0.38 })
     WhiteBox.Box(scene_, "SpringPostL", Vector3(-6.05, 1.5, 14), Vector3(0.16, 0.9, 0.16), { 0.26, 0.28, 0.34 })
     WhiteBox.Box(scene_, "SpringPostR", Vector3(-4.35, 1.5, 14), Vector3(0.16, 0.9, 0.16), { 0.26, 0.28, 0.34 })
-    WhiteBox.Beacon(scene_, "Beacon_spring", Vector3(-5.2, 0.5, 14), { 0.40, 0.62, 0.82 }, 1.4)
+    -- 山泉保留清水、石井和局部冷光，不创建竖直光柱。
 
     -- 无面鬼处（石台 + C 阶段 3D 模型：白衣/空脸/泪痕蜷坐鬼，坐在石台顶；失败回退原暗红球）
     -- R12 近景靠边：原 x=2 石台直径 4 左缘压出生→小镇中心路线 → 右移到 x=3.5 让出中线
     WhiteBox.Cylinder(scene_, "GhostStone", Vector3(3.5, 0.3, 16), 4.0, 0.6, { 0.28, 0.26, 0.30 })
     local ghostNode = scene_:CreateChild("GhostMarker")
-    -- 石台顶面 y=0.6；x 偏 +0.55 让开台心 Beacon_ghost 光柱与 Blossom_water 球（原样保留），
-    -- 仍在"约(3.5,·,16)"台顶范围内，真机截图实测光柱穿脸遮挡
+    -- 石台顶面 y=0.6；x 偏 +0.55 让开台心桃花触发球，仍在台顶范围内
     ghostNode.position = Vector3(4.05, 0.6, 16)
     -- rig 版包围盒 Min Y=0 → 子节点无需上移即脚底落台面；
     -- 视觉正面实测 +90° 朝 -Z，故 -90° 使正面朝 +Z（出生点/玩家来向）
@@ -660,9 +656,7 @@ function BuildLuoShuiYinShan(root)
         local shape = ghostNode:CreateComponent("CollisionShape")
         shape:SetCylinder(1.0, 1.2, Vector3(0, 0.6, 0))
     end
-    -- 无面鬼处更醒目：暗红/冷色光柱 + 局部冷光
-    WhiteBox.Beacon(scene_, "Beacon_ghost", Vector3(3.5, 0.6, 16), { 0.72, 0.22, 0.28 }, 3.2)
-    WhiteBox.Beacon(scene_, "Beacon_ghost_cold", Vector3(4.4, 0.5, 16.8), { 0.38, 0.48, 0.72 }, 2.0)
+    -- 无面鬼处保留局部冷暖光，不创建竖直光柱。
     local ghostLightNode = scene_:CreateChild("GhostGlow")
     ghostLightNode.position = Vector3(3.5, 1.8, 16)
     local ghostLight = ghostLightNode:CreateComponent("Light")
@@ -687,7 +681,6 @@ function BuildLuoShuiYinShan(root)
     for i, pos in ipairs(mineLamps) do
         WhiteBox.Box(scene_, "MineLampPost" .. i, Vector3(pos.x, 0.55, pos.z), Vector3(0.14, 1.1, 0.14), { 0.22, 0.22, 0.28 })
         WhiteBox.Sphere(scene_, "MineLamp" .. i, Vector3(pos.x, 1.2, pos.z), 0.22, { 0.85, 0.72, 0.42 }, { unlit = true })
-        WhiteBox.Beacon(scene_, "Beacon_mine_" .. i, pos, { 0.82, 0.68, 0.38 }, 1.0)
     end
 
     -- 三朵桃花（演示标记；water 跟随无面鬼石台右移）
@@ -700,7 +693,7 @@ function BuildLuoShuiYinShan(root)
     local wallRgb = { 0.24, 0.27, 0.34 }
     WhiteBox.BoundaryWalls(scene_, 7.5, 29.0, 3.0, wallRgb)
 
-    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发/光柱原位不动） ==========
+    -- ========== D2 场景补齐：白模道具 → 真实模型视觉（碰撞/触发原位不动） ==========
     -- 小镇民居×5+屋棚 → 真实山镇民居（非等比对齐原白模盒体尺寸；朝向各异）
     local townHouses = {
         { name = "TownHouse1", pos = Vector3(-4, 0, -12), s = { x = 4.0, y = 2.3, z = 4.0 }, yaw = 10 },
@@ -718,7 +711,7 @@ function BuildLuoShuiYinShan(root)
         SwapToProp(scene_, GetNodes(scene_, stripNames),
             h.name .. "_Visual", "town_house", h.pos, h.s, h.yaw)
     end
-    -- 山泉井 → 真实泉井（石栏+清泉；Beacon_spring 光柱保留）
+    -- 山泉井 → 真实泉井（石栏+清泉；局部冷光保留）
     SwapToProp(scene_,
         GetNodes(scene_, { "SpringWell", "SpringWater", "SpringFrame", "SpringPostL", "SpringPostR" }),
         "SpringWell_Visual", "spring_well", Vector3(-5.2, 0, 14), 2.1, 20)
@@ -737,7 +730,7 @@ function BuildLuoShuiYinShan(root)
                 Vector3(rp.x, 0, rp.z), dia * 1.1, i * 40)
         end
     end
-    -- 矿灯×3 → 真实灯柱（暖灯点光效果由 unlit 灯罩贴图自带；Beacon 光柱保留）
+    -- 矿灯×3 → 真实灯柱（暖灯点光效果由 unlit 灯罩贴图自带）
     for i = 1, 3 do
         local mp = mineLamps[i]
         SwapToProp(scene_, GetNodes(scene_, { "MineLampPost" .. i, "MineLamp" .. i }),

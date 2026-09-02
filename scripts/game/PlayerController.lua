@@ -69,11 +69,22 @@ local SUNU_ANIM_LOCAL = {
 local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619.mdl"
 local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
 local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉匹配
+local SUNU_FAKE_ANIMATION = true -- 真机骨骼未驱动时启用节点级动感兜底
+local SUNU_FAKE_WALK_FREQ = 5.2
+local SUNU_FAKE_RUN_FREQ = 8.0
 
 ---@type AnimationController|nil
 local sunuController_ = nil
 ---@type AnimatedModel|nil 素女骨骼模型引用（诊断与状态查询用）
 local sunuModel_ = nil
+---@type Node|nil 素女视觉节点（B 方案节点级假动画）
+local sunuModelNode_ = nil
+---@type Vector3
+local sunuBasePosition_ = Vector3.ZERO
+---@type Quaternion
+local sunuBaseRotation_ = Quaternion.IDENTITY
+---@type number
+local sunuFakeTime_ = 0.0
 
 -- ── 动画诊断（官方原始 Bip001 .ani → 引擎 RuntimeRetargeter）────────────
 ---@type number
@@ -132,10 +143,10 @@ local function StartSunuAnimation(modelNode)
     print("[PlayerController] 素女动画控制器已启动（RuntimeRetargeter）: " .. SUNU_ANIM_LOCAL[1])
 end
 
---- 按移动意图切换官方原始动画；GetMoveSpeed 在真机上可能不反映 KCC 实际移动。
+--- 保留真实控制器动画用于状态/时间诊断；B 方案下视觉由节点级假动画接管。
 ---@param movingIntent boolean
 ---@param runningIntent boolean
-local function UpdateSunuAnimation(movingIntent, runningIntent)
+local function UpdateSunuControllerAnimation(movingIntent, runningIntent)
     if sunuController_ == nil then return end
     local index = 1
     if movingIntent then
@@ -153,7 +164,32 @@ local function UpdateSunuAnimation(movingIntent, runningIntent)
     end
 end
 
----@param timeStep number
+---@param movingIntent boolean
+---@param runningIntent boolean
+local function UpdateSunuFakeAnimation(timeStep, movingIntent, runningIntent)
+    if sunuModelNode_ == nil then return end
+    sunuFakeTime_ = sunuFakeTime_ + timeStep
+    local frequency = runningIntent and SUNU_FAKE_RUN_FREQ or SUNU_FAKE_WALK_FREQ
+    local sway = 0.0
+    local bob = 0.0
+    local lean = 0.0
+    if movingIntent then
+        local phase = sunuFakeTime_ * frequency
+        sway = math.sin(phase) * (runningIntent and 0.055 or 0.035)
+        bob = math.abs(math.sin(phase)) * (runningIntent and 0.045 or 0.025)
+        lean = runningIntent and -7.0 or -3.5
+    end
+    local fakePosition = Vector3(sunuBasePosition_.x, sunuBasePosition_.y + bob, sunuBasePosition_.z)
+    local fakeRotation = sunuBaseRotation_ * Quaternion(sway * 35.0, Vector3.FORWARD)
+        * Quaternion(lean, Vector3.RIGHT)
+    sunuModelNode_:SetPosition(fakePosition)
+    sunuModelNode_:SetRotation(fakeRotation)
+    if movingIntent and not diagReported_["fake"] then
+        diagReported_["fake"] = true
+        print("[诊断⑥] B节点假动画已启用 | mode=" .. (runningIntent and "Run" or "Walk"))
+    end
+end
+
 local function UpdateSunuBoneDiagnostics(timeStep)
     if sunuModel_ == nil then return end
     diag5Accum_ = diag5Accum_ + timeStep
@@ -196,8 +232,9 @@ local function UpdateSunuBoneDiagnostics(timeStep)
         diag5Initialized_ = true
         movedCount = 0
     end
-    print(string.format("[诊断⑤] 移动骨骼=%d/%d | 当前动画=%s | animStateTime=%.2f | weight=%.2f",
-        movedCount, sampledCount, currentAnimation, animationTime, animationWeight))
+    local fakeMode = SUNU_FAKE_ANIMATION and "B节点假动画" or "骨骼动画"
+    print(string.format("[诊断⑤] 移动骨骼=%d/%d | 当前动画=%s | animStateTime=%.2f | weight=%.2f | 视觉驱动=%s",
+        movedCount, sampledCount, currentAnimation, animationTime, animationWeight, fakeMode))
 end
 
 ---@param scene Scene
@@ -218,6 +255,8 @@ function PlayerController.Create(scene)
     -- 视觉：素女 3D 模型。D3 优先带骨骼版（AnimatedModel + FSM 播 idle/walk/run），
     --   加载失败回退旧静态网格（随节点整体转向/移动），再失败回退白模球，保玩法不破
     local modelNode = playerNode_:CreateChild("ModelNode")
+    sunuModelNode_ = modelNode
+    sunuFakeTime_ = 0.0
     local rigModel = cache:GetResource("Model", SUNU_RIG_MODEL)
     local rigMat = cache:GetResource("Material", SUNU_RIG_MATERIAL)
     local rigLoaded = false
@@ -237,6 +276,8 @@ function PlayerController.Create(scene)
         modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
         -- 节点前向 +Z 与网格前向一致：autoRotateToMoveDir=true 时脸朝移动方向，第三人称相机看到背影
         modelNode:SetRotation(Quaternion(0, Vector3.UP))
+        sunuBasePosition_ = modelNode.position
+        sunuBaseRotation_ = modelNode.rotation
         -- 重定向防飘移：禁用 Root/Hip（3D 角色管线标准做法）
         local skel = bodyModel:GetSkeleton()
         if skel ~= nil then
@@ -284,6 +325,8 @@ function PlayerController.Create(scene)
             modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
             modelNode.position = Vector3(0, SUNU_HEIGHT / 2, 0)
             modelNode:SetRotation(Quaternion(90, Vector3.UP))
+            sunuBasePosition_ = modelNode.position
+            sunuBaseRotation_ = modelNode.rotation
         else
             print("[PlayerController] 警告：素女模型加载失败，回退白模球")
             local bodyModel = modelNode:CreateComponent("StaticModel")
@@ -292,6 +335,8 @@ function PlayerController.Create(scene)
             bodyModel.castShadows = true
             modelNode.scale = Vector3(0.45, 0.6, 0.45)
             modelNode.position = Vector3(0, 0.65, 0)
+            sunuBasePosition_ = modelNode.position
+            sunuBaseRotation_ = modelNode.rotation
         end
     end
 
@@ -526,7 +571,12 @@ function PlayerController.PostUpdate(timeStep)
             or controls:IsDown(CTRL_RIGHT)
         runningIntent = movingIntent and controls:IsDown(CTRL_RUN)
     end
-    UpdateSunuAnimation(movingIntent, runningIntent)
+    if not SUNU_FAKE_ANIMATION then
+        UpdateSunuControllerAnimation(movingIntent, runningIntent)
+    end
+    if SUNU_FAKE_ANIMATION then
+        UpdateSunuFakeAnimation(timeStep, movingIntent, runningIntent)
+    end
     UpdateSunuBoneDiagnostics(timeStep)
 
     -- 诊断②：读取 AnimationController 实际动画状态权重和时间，不读取不存在的 FSM 状态。

@@ -200,21 +200,8 @@ function WhiteBox.BlossomMarker(scene, position, key, rgb)
         trigger = true,
         unlit = true,
     })
-    -- 光柱：醒目标识"这是可采撷的桃花"，解决白模下难分辨的问题
-    WhiteBox.Beacon(scene, "Beacon_" .. key, position, rgb)
+    -- 保留桃花触发球本体；桃花辨识改由 BlossomGlow 的花簇/点光/微光承担，不创建竖直光柱。
     return node
-end
-
---- 采集/交互辨识光柱：细长自发光圆柱，白模下让人一眼看出"这里有可采撷/可交互目标"
----@param scene Scene
----@param name string 光柱节点名（与目标 key 关联，便于拾取后一并移除）
----@param position Vector3 目标参考位置（取其 x/z，y 作为光柱底部）
----@param rgb table
----@param height? number 光柱高（默认 1.5）
-function WhiteBox.Beacon(scene, name, position, rgb, height)
-    local h = height or 1.5
-    return WhiteBox.Cylinder(scene, name or "Beacon", Vector3(position.x, position.y + h / 2, position.z),
-        0.10, h, rgb, { unlit = true, alpha = 0.85, collision = false })
 end
 
 return WhiteBox

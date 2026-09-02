@@ -325,10 +325,13 @@ function FlowController.OnBlossomCollected(key, node)
         return
     end
 
-    -- 采集：先移除标记节点与其辨识光柱（避免对话中拾取丢失 / 残留空柱）
+    -- 采集节点已移除时，同级旧光柱可能存在；保留兼容清理并安全判空。
     if node ~= nil then
-        local beacon = node.parent and node.parent:GetChild("Beacon_" .. key, true)
-        if beacon ~= nil then beacon:Remove() end
+        local parent = node.parent
+        if parent ~= nil then
+            local beacon = parent:GetChild("Beacon_" .. key, true)
+            if beacon ~= nil then beacon:Remove() end
+        end
         node:Remove()
     end
 
