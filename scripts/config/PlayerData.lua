@@ -128,9 +128,12 @@ function PlayerData.Save(data)
         print("[PlayerData] 保存失败：data 为空")
         return false
     end
-    if not fileSystem:CreateDir("saves") then
-        print("[PlayerData] 保存失败：无法创建 saves/ 目录")
-        return false
+    if fileSystem:DirExists("saves") ~= true then
+        local created = fileSystem:CreateDir("saves")
+        if not created and fileSystem:DirExists("saves") ~= true then
+            print("[PlayerData] 保存失败：无法创建 saves/ 目录")
+            return false
+        end
     end
     local file = File(PlayerData.SAVE_FILE, FILE_WRITE)
     if file == nil or not file:IsOpen() then

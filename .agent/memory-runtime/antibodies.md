@@ -15,6 +15,8 @@
 
 - [AB-008] [跨项目] [UrhoX UI] 长文本回顾面板应挂持久 HUD Root，用 `UI.Modal` + `UI.ScrollView` 一次创建并通过 `Open/Close` 管理；不要用 `UI.SetRoot` 替换已有菜单/章节卡/对话层。离屏验证缺少 NotoSansSC/MiSans 时，不能仅凭纯色按钮截图判断中文文本是否正常。
 
+- [AB-009] [跨项目] [UrhoX 存档] `FileSystem:CreateDir()` 返回 false 可能表示目录已存在，不能直接当作创建失败；保存前先用 `DirExists()`，仅在创建后目录仍不存在时失败，再打开相对存档路径。
+
 ## 同步记录
 
-最近一次同步：2026-09-02 桃素洛无幽·素女篇
+最近一次同步：2026-09-03 桃素洛无幽·素女篇
