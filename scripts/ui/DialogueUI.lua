@@ -279,13 +279,14 @@ function RenderChoice()
     local shell = StoryPanel.Wrap(inner)
     -- ② 三选整屏应景底：不再铺静态图，直接透出 3D 场景（D1 Skybox 即水墨全景）。
     --    panel 不设任何背景色，仅叠线性渐变压暗保证选项可读。
-    -- UI 精修：头像放入对白/选项面板右下角，位于红框目标区域，不再悬浮在面板外。
+    -- UI 精修：头像放在对白框中部右侧的红框位置，不再悬浮在面板外。
     local portrait = UI.Panel {
         position = "absolute",
-        right = 18,
-        bottom = 18,
+        right = "8%",
+        top = "50%",
         width = 112,
         height = 112,
+        transform = "translateY(-50%)",
         borderRadius = 1000,
         borderWidth = 2,
         borderColor = { 210, 176, 128, 190 },

@@ -8,6 +8,8 @@
 
 local PlayerData = {}
 
+---@type string
+local SAVE_DIR = "saves"
 --- 存档结构版本：加载时校验，低版本走迁移/兜底
 PlayerData.SCHEMA_VERSION = 2
 
@@ -128,10 +130,10 @@ function PlayerData.Save(data)
         print("[PlayerData] 保存失败：data 为空")
         return false
     end
-    if fileSystem:DirExists("saves") ~= true then
-        local created = fileSystem:CreateDir("saves")
-        if not created and fileSystem:DirExists("saves") ~= true then
-            print("[PlayerData] 保存失败：无法创建 saves/ 目录")
+    if fileSystem:DirExists(SAVE_DIR) ~= true then
+        local created = fileSystem:CreateDir(SAVE_DIR)
+        if not created and fileSystem:DirExists(SAVE_DIR) ~= true then
+            print("[PlayerData] 保存失败：无法创建 " .. SAVE_DIR .. "/ 目录")
             return false
         end
     end
