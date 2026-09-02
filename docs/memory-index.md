@@ -5,8 +5,8 @@
 # 项目记忆索引
 
 项目：桃素洛无幽·素女篇
-当前版本：v0.3.10-review
-简述：TapTap 制造 × Seedance 主题赛单机叙事游戏。本轮：游戏说明统一改为自动存档口径；主菜单新增剧情回顾入口；新增按章回分段的完整剧情滚动面板，保留既有主链/三选/信念/结局/存读档逻辑不变。
+当前版本：v0.3.11-movement
+简述：TapTap 制造 × Seedance 主题赛单机叙事游戏。本轮：玩家 CharacterComponent 直接设舒适基础移动速度（步行 3.0 m/s、跑步 6.5 m/s），调试倍率保留 1.0 且不参与缩放；B 假动画频率略调高，边界钳制逻辑不变。
 最后巩固：2026-09-02
 
 ## 项目概况
@@ -83,7 +83,7 @@
 - DSH harness 环境：`dsh-personal` 预设的视觉路由（含图会话→dashscope/qwen3-vl-plus）必须与 `settings.yaml` 的 `llm-pi-ai.providers.dashscope` 同步；删 provider 配置/key 必须同时停用该路由，否则含图轮次 `NO_ADAPTER` 整轮失败。2026-08-21 已通过 `~/.dsh/profiles/web/cordis.patch.yml` 给 personal 打 `disabled: true` 停用（read_image 不可用，视频/截图分析改用 gst 解码 + PIL 帧统计）。
 
 ## 最近变更
-- 2026-09-02 **自动存档指引 + 剧情回顾（本会话，提交 `d7b4030`）**：`GameGuide` 将「右上存档/继续」改为「游戏会自动存档，随时可从主菜单『继续游戏』继续」，未新增存档按钮；新增 `config/StoryReview.lua` 七段完整章回剧情（楔子、第一至五回、尾声三结局）与 `ui/StoryReview.lua` 滚动 Modal；`MainMenu` 新增「剧情回顾」按钮，`main` 将其挂到持久 HUD Root。LSP 目标文件 0 Error，官方构建成功，validate 报告 `lua_errors=0`；本地截图命令受运行环境超时未产出 PNG。字体缺失（NotoSansSC/MiSans）为既有项目资源基线问题，非本轮引入。已推 GitHub `main`。
+- 2026-09-02 **玩家移动速度调优（本会话）**：`PlayerController` 直接设置 `CharacterComponent` 基础速度：`SetWalkSpeed(3.0)`、`SetRunSpeed(6.5)`；`DEBUG_MOVE_SPEED_MULTIPLIER` 保留为 `1.0` 但不再参与缩放。B 节点假动画频率由 walk `5.2→5.6`、run `8.0→8.4`，幅度保持不变，避免快速晃动；边界 XZ 钳制与 `KCC:Warp` 未改。LSP 0 Error、官方构建成功、60 帧验证 `lua_errors=0`；验证环境既有字体缺失仍在，未有真实 Lua 错误。真机走/跑手感与录屏待用户侧补验。
 - 2026-08-31 **对话 UI 整改 ①②③**：新增 `VideoSubtitles.lua`（S1~S9 分段旁白）；`MediaPlayer` 顶部章回名 + 底部字幕条（fontSize 22，半透明暖底），S6 断点三选遮罩改为半透明不再纯黑。`DialogueUI` 对白框暖色半透明、对白 22 / 旁白 26；三选全屏应景 `backgroundImage`（场景图/立绘）+ 底部选项浮层。④ 白模→真模未做：玩家仍 Sphere、老人圆柱+球、三场景 WhiteBox，需独立排期（生成/导入模型并锁交互坐标）。LSP / 官方构建见本轮。⚠️ 真机截图/录屏仍待补。
 - 2026-08-31 **发布前低风险清理**：`VIDEO_SOURCES` 删除未引用 `S6/S10~S13`（主链只用 `S6-1..5` + `S7/S8/S9`）；`main.lua` 去掉 `VideoSpike`/`F6`；Spike 模块与三档测试片、CGT 中间产物、章节卡源图、剧情尾帧移出 `assets/`/`scripts/` 到 `_dev/`（全量 `**` 引用不再打进包）。竖屏 `SetOrientations("Portrait")` + `taptap_publish.screen_orientation=portrait` 仍在。主链视频/配音/音效/章节卡路径字面量均存在。F5/F7–F10/F2–F4 键盘调试键保留（画面无按钮）。LSP / 官方构建见本轮结果。⚠️ 真机整链与三轴结局仍待补；增强引用（`scripts/**`）未切，需用户确认。
 - 2026-08-30 **真机验收遗留 3 项**：① `EnterParagraph` 对 `p.type=="end"` 跳过章节卡（P43/44/45→P99 不再闪 ch1「收集·朝阳之谷」）；② P11 只认 `hotspots` 五行花、按 `blossoms` 去重计数，忽略 `Int_oldman`；fire 移到 `(4.5,0.6,-6)` 主路东侧，拾取半径 1.1→1.6。③ 去掉 Spike/断点/S6链/完成/保存/读档触屏按钮、场景横幅、SaveMenu 常驻入口、GameHUD Run/Jump；保留移动摇杆+滑动视角（真机探索必需）与主菜单开始/继续。LSP 0 Error、官方构建成功。⚠️ 真机复验：P99 前不弹章卡、5 朵=5 独白含 fire、调试 HUD 已清。
