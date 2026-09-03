@@ -73,7 +73,7 @@ local SUNU_ANIM_LOCAL = {
 local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619.mdl"
 local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
 local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉匹配
-local SUNU_FAKE_ANIMATION = false -- 优先使用真实骨骼动画；节点级动感仅保留为回退开关
+local SUNU_FAKE_ANIMATION = true -- 骨骼姿态待重新绑定前，使用稳定的节点级动感兜底
 -- B 假动画节奏：随基础速度略微提高，但保持舒适，不直接追随速度倍增
 local SUNU_FAKE_WALK_FREQ = 5.6
 local SUNU_FAKE_RUN_FREQ = 8.4
@@ -158,15 +158,22 @@ local function CountBoundTracks(anim, skel)
     return directTracks, totalTracks
 end
 
---- 使用与目标骨骼同名的本地动画，避免依赖运行时重定向映射表。
+--- 使用与目标骨骼同名的本地动画；姿态校准期间由 B 节点动感接管视觉。
 ---@param modelNode Node
 local function StartSunuAnimation(modelNode)
     local controller = modelNode:GetOrCreateComponent("AnimationController")
     sunuController_ = controller
-    controller:PlayExclusive(SUNU_ANIM_LOCAL[1], 0, true, 0.0)
-    sunuAnimationState_ = controller:GetAnimationState(SUNU_ANIM_LOCAL[1])
-    sunuAnimationIndex_ = 1
-    print("[PlayerController] 素女动画控制器已启动（本地同名骨骼动画）: " .. SUNU_ANIM_LOCAL[1])
+    if SUNU_FAKE_ANIMATION then
+        controller:StopAll(0.0)
+        sunuAnimationState_ = nil
+        sunuAnimationIndex_ = 1
+        print("[PlayerController] 素女骨骼动画已暂停，使用 B 节点动感兜底: " .. SUNU_ANIM_LOCAL[1])
+    else
+        controller:PlayExclusive(SUNU_ANIM_LOCAL[1], 0, true, 0.0)
+        sunuAnimationState_ = controller:GetAnimationState(SUNU_ANIM_LOCAL[1])
+        sunuAnimationIndex_ = 1
+        print("[PlayerController] 素女动画控制器已启动（本地同名骨骼动画）: " .. SUNU_ANIM_LOCAL[1])
+    end
 end
 
 --- 保留真实控制器动画用于状态/时间诊断；B 方案下视觉由节点级假动画接管。
@@ -237,7 +244,7 @@ local function GetCurrentAnimationInfo()
     return currentAnimation, animationTime, animationWeight
 end
 
-local function UpdateSunuBoneDiagnostics(timeStep)
+local function UpdateSunuBoneDiagnostics(timeStep, movingIntent, runningIntent)
     if sunuModel_ == nil or playerNode_ == nil then return end
     diag5Accum_ = diag5Accum_ + timeStep
     if diag5Accum_ < 0.5 then return end
@@ -276,8 +283,52 @@ local function UpdateSunuBoneDiagnostics(timeStep)
         movedCount = 0
     end
     local fakeMode = SUNU_FAKE_ANIMATION and "B节点假动画" or "骨骼动画"
-    print(string.format("[诊断⑤] 移动骨骼=%d/%d | 当前动画=%s | animStateTime=%.2f | weight=%.2f | 视觉驱动=%s",
-        movedCount, sampledCount, currentAnimation, animationTime, animationWeight, fakeMode))
+    local motionMode = runningIntent and "Run" or (movingIntent and "Walk" or "Idle")
+    print(string.format("[诊断⑤] 移动骨骼=%d/%d | 当前动画=%s | animStateTime=%.2f | weight=%.2f | 视觉驱动=%s | motion=%s",
+        movedCount, sampledCount, currentAnimation, animationTime, animationWeight, fakeMode, motionMode))
+
+    -- 诊断⑧：采样关键骨骼世界 Y 与膝关节夹角，定位下沉/过折/反折。
+    -- 关节示意：Hip ── L_Thigh ── L_Calf(膝) ── L_Foot(踝)
+    -- 目的：Hip/Root/踝的 Y 检测整体下沉；膝角检测重定向旋转是否过折。
+    local function GetBoneWorldPosition(name)
+        local bone = skeleton:GetBone(name)
+        if bone == nil or bone.node == nil then return nil end
+        return bone.node.worldPosition
+    end
+    local rootPosition = GetBoneWorldPosition("Root")
+    local hipPosition = GetBoneWorldPosition("Hip")
+    local leftThighPosition = GetBoneWorldPosition("L_Thigh")
+    local leftKneePosition = GetBoneWorldPosition("L_Calf")
+    local leftAnklePosition = GetBoneWorldPosition("L_Foot")
+    local rightThighPosition = GetBoneWorldPosition("R_Thigh")
+    local rightKneePosition = GetBoneWorldPosition("R_Calf")
+    local rightAnklePosition = GetBoneWorldPosition("R_Foot")
+    local modelNodePosition = sunuModelNode_ ~= nil and sunuModelNode_:GetWorldPosition() or nil
+    if rootPosition ~= nil and hipPosition ~= nil and modelNodePosition ~= nil
+        and leftThighPosition ~= nil and leftKneePosition ~= nil and leftAnklePosition ~= nil
+        and rightThighPosition ~= nil and rightKneePosition ~= nil and rightAnklePosition ~= nil then
+        local leftUpperLeg = leftThighPosition - leftKneePosition
+        local leftLowerLeg = leftAnklePosition - leftKneePosition
+        local rightUpperLeg = rightThighPosition - rightKneePosition
+        local rightLowerLeg = rightAnklePosition - rightKneePosition
+        local leftKneeAngle = leftUpperLeg:Angle(leftLowerLeg)
+        local rightKneeAngle = rightUpperLeg:Angle(rightLowerLeg)
+        local logKey = currentAnimation
+        if not diagReported_["pose:" .. logKey] then
+            diagReported_["pose:" .. logKey] = true
+            print(string.format("[诊断⑧] clip=%s | HipY=%.3f | RootY=%.3f | LAnkleY=%.3f | RAnkleY=%.3f | LThigh角=%.1f° | RThigh角=%.1f° | stateTime=%.2f",
+                currentAnimation,
+                hipPosition.y - modelNodePosition.y,
+                rootPosition.y - modelNodePosition.y,
+                leftAnklePosition.y - modelNodePosition.y,
+                rightAnklePosition.y - modelNodePosition.y,
+                leftKneeAngle,
+                rightKneeAngle,
+                animationTime))
+        end
+    else
+        print("[诊断⑧] 关键骨骼采样失败 | 需要 Root/Hip/L_Thigh/L_Calf/L_Foot/R_Thigh/R_Calf/R_Foot")
+    end
 end
 
 ---@param scene Scene
@@ -639,7 +690,7 @@ function PlayerController.PostUpdate(timeStep)
     if SUNU_FAKE_ANIMATION then
         UpdateSunuFakeAnimation(timeStep, movingIntent, runningIntent)
     end
-    UpdateSunuBoneDiagnostics(timeStep)
+    UpdateSunuBoneDiagnostics(timeStep, movingIntent, runningIntent)
 
     -- 诊断⑦：确认真机/离线每帧均由引擎推进 AnimationController 与 AnimatedModel 骨骼。
     -- Engine API 中没有 AnimationController:Update()/AnimatedModel:UpdateAnimation()，
@@ -680,7 +731,8 @@ function PlayerController.PostUpdate(timeStep)
             if leftThighBone ~= nil then leftThighAnimated = tostring(leftThighBone.animated) end
             if rightThighBone ~= nil then rightThighAnimated = tostring(rightThighBone.animated) end
         end
-        print(string.format("[诊断⑦] UpdateAnimation=引擎生命周期自动推进 | 骨骼更新标志=%d/%d | 蒙皮/AnimatedModel enabled=%s | AnimationState enabled=%s | weight=%.2f | time=%.2f delta=%.2f changed=%s | 采样骨骼姿态变化=%d/%d | animated(Root/Hip/L_Thigh/R_Thigh)=%s/%s/%s/%s | updateInvisible=%s | clip=%s",
+        local visualClip = SUNU_FAKE_ANIMATION and "B节点动感" or animationName
+        print(string.format("[诊断⑦] UpdateAnimation=未调用（B节点动感接管） | 骨骼更新标志=%d/%d | 蒙皮/AnimatedModel enabled=%s | AnimationState enabled=%s | weight=%.2f | time=%.2f delta=%.2f changed=%s | 采样骨骼姿态变化=%d/%d | animated(Root/Hip/L_Thigh/R_Thigh)=%s/%s/%s/%s | updateInvisible=%s | clip=%s",
             diag7AnimatedBoneCount_,
             diag7TotalBoneCount_,
             animatedModelEnabled and "是" or "否",
@@ -696,7 +748,7 @@ function PlayerController.PostUpdate(timeStep)
             leftThighAnimated,
             rightThighAnimated,
             tostring(sunuModel_:GetUpdateInvisible()),
-            animationName))
+            visualClip))
     end
 
     -- 诊断②：读取 AnimationController 实际动画状态权重和时间，不读取不存在的 FSM 状态。
