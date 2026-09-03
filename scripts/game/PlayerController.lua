@@ -56,32 +56,36 @@ local RUN_SPEED = 6.5
 local DEBUG_MOVE_SPEED_MULTIPLIER = 1.0
 
 -- 素女 3D 模型（D3 角色动画：官方库带骨骼古风女性，41 骨 Tripo Rig 标准骨架，
---   使用官方 DefaultMale 原始 Bip001 动画，由引擎 RuntimeRetargeter 驱动）
+--   使用与目标骨骼同名的本地重定向动画，避免真机依赖 RuntimeRetargeter 映射表）
 local SUNU_RIG_MODEL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Meshes/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064.mdl"
 local SUNU_RIG_MATERIAL = "model/3a5478a7-95aa-5840-a4c5-713c57214e20/Materials/rig-1-a7be4e0a-6cd7-4e64-adc7-376f75cb5064_00_tripo_material_a7ec7f07-66d8-4f3f-8f49-69d441544492.xml"
--- DWP 下载扩展保留给其他运行时资源；动画本身走本地官方资源。
+-- DWP 下载扩展保留给其他运行时资源；动画本身走本地同名骨骼资源。
 require "urhox-libs.Engine.ResourceCacheExtensions"
 
--- FSM 引用的素女动画：使用官方原始 Bip001 .ani，由引擎 RuntimeRetargeter
--- 按 AnimationsMappings.json 自动映射到目标 Tripo 41 骨；不要替换成离线伪重定向产物。
+-- 三份动画已离线重定向到素女 Tripo 41 骨命名（22 条有效轨道），
+-- 直接按 AnimatedModel 的同名骨骼绑定，不依赖 RuntimeRetargeter。
 local SUNU_ANIM_LOCAL = {
-    "animation/DefaultMale_Idle.ani",         -- 官方站立待机
-    "animation/DefaultMale_WalkForward.ani",  -- 官方向前行走
-    "animation/DefaultMale_RunForward.ani",   -- 官方向前跑步
+    "animation/Sunu_Idle.ani",         -- 站立待机
+    "animation/Sunu_WalkForward.ani",  -- 向前行走
+    "animation/Sunu_RunForward.ani",   -- 向前跑步
 }
 -- 旧静态素女（rig 模型加载失败时的回退视觉，保玩法不破）
 local SUNU_MODEL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Meshes/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619.mdl"
 local SUNU_MATERIAL = "model/57c4a9a5cfae45a89f9895d411d0fd40/Materials/texture-2-9736947c-8d44-4e7a-b250-7183fdba3619_00_tripo_node_cec0a95c-7f56-4e3e-94df-78c87bc56e1b_material.xml"
 local SUNU_HEIGHT = 1.6          -- 目标身高（米），与胶囊 1.8 视觉匹配
-local SUNU_FAKE_ANIMATION = true -- 真机骨骼未驱动时启用节点级动感兜底
+local SUNU_FAKE_ANIMATION = false -- 优先使用真实骨骼动画；节点级动感仅保留为回退开关
 -- B 假动画节奏：随基础速度略微提高，但保持舒适，不直接追随速度倍增
 local SUNU_FAKE_WALK_FREQ = 5.6
 local SUNU_FAKE_RUN_FREQ = 8.4
 
 ---@type AnimationController|nil
 local sunuController_ = nil
+---@type AnimationState|nil
+local sunuAnimationState_ = nil
 ---@type AnimatedModel|nil 素女骨骼模型引用（诊断与状态查询用）
 local sunuModel_ = nil
+---@type boolean 是否有真实 AnimatedModel 骨骼路径
+local sunuRigLoaded_ = false
 ---@type Node|nil 素女视觉节点（B 方案节点级假动画）
 local sunuModelNode_ = nil
 ---@type Vector3
@@ -91,7 +95,7 @@ local sunuBaseRotation_ = Quaternion.IDENTITY
 ---@type number
 local sunuFakeTime_ = 0.0
 
--- ── 动画诊断（官方原始 Bip001 .ani → 引擎 RuntimeRetargeter）────────────
+-- ── 动画诊断（本地 Tripo 同名骨骼 .ani）────────────────────────────
 ---@type number
 local diagTime_ = 0.0
 ---@type boolean
@@ -102,10 +106,26 @@ local diag3Accum_ = 0.0
 local diag5Accum_ = 0.0
 ---@type boolean
 local diag5Initialized_ = false
+---@type number
+local diag7Accum_ = 0.0
+---@type number
+local diag7PreviousAnimationTime_ = 0.0
+---@type boolean
+local diag7HasPreviousTime_ = false
+---@type number
+local diag7BoneMovedCount_ = 0
+---@type number
+local diag7SampledBoneCount_ = 0
 ---@type table<string, Vector3>
-local prevBoneRelativePositions_ = {}
+local prevBoneLocalPositions_ = {}
+---@type table<string, Quaternion>
+local prevBoneLocalRotations_ = {}
 ---@type table<string, boolean>
 local diagReported_ = {}
+---@type integer
+local diag7AnimatedBoneCount_ = 0
+---@type integer
+local diag7TotalBoneCount_ = 0
 ---@type integer
 local sunuAnimationIndex_ = 1
 ---@type string[]
@@ -122,7 +142,7 @@ local sunuDiagnosticBones_ = {
     "R_Forearm", "R_ForearmTwist01", "R_ForearmTwist02", "R_Hand",
 }
 
---- 统计官方动画原始轨道；运行时由 RuntimeRetargeter 按 source/target 骨架映射，不以同名轨道数判断重定向结果。
+--- 统计本地动画与目标模型的同名骨骼轨道绑定数。
 ---@param anim Animation
 ---@param skel Skeleton
 ---@return integer directTracks
@@ -138,14 +158,15 @@ local function CountBoundTracks(anim, skel)
     return directTracks, totalTracks
 end
 
---- 使用官方原始动画，由引擎 RuntimeRetargeter 负责 Bip001 -> Tripo 41 骨映射。
+--- 使用与目标骨骼同名的本地动画，避免依赖运行时重定向映射表。
 ---@param modelNode Node
 local function StartSunuAnimation(modelNode)
     local controller = modelNode:GetOrCreateComponent("AnimationController")
     sunuController_ = controller
     controller:PlayExclusive(SUNU_ANIM_LOCAL[1], 0, true, 0.0)
+    sunuAnimationState_ = controller:GetAnimationState(SUNU_ANIM_LOCAL[1])
     sunuAnimationIndex_ = 1
-    print("[PlayerController] 素女动画控制器已启动（RuntimeRetargeter）: " .. SUNU_ANIM_LOCAL[1])
+    print("[PlayerController] 素女动画控制器已启动（本地同名骨骼动画）: " .. SUNU_ANIM_LOCAL[1])
 end
 
 --- 保留真实控制器动画用于状态/时间诊断；B 方案下视觉由节点级假动画接管。
@@ -195,8 +216,29 @@ local function UpdateSunuFakeAnimation(timeStep, movingIntent, runningIntent)
     end
 end
 
+local function GetCurrentAnimationInfo()
+    local currentAnimation = "无"
+    local animationTime = 0.0
+    local animationWeight = 0.0
+    if sunuController_ ~= nil then
+        local animationCount = sunuController_:GetNumAnimations()
+        for i = 0, animationCount - 1 do
+            local control = sunuController_:GetAnimation(i)
+            if control ~= nil then
+                local weight = sunuController_:GetWeight(control.name)
+                if weight > animationWeight then
+                    currentAnimation = control.name
+                    animationTime = sunuController_:GetTime(control.name)
+                    animationWeight = weight
+                end
+            end
+        end
+    end
+    return currentAnimation, animationTime, animationWeight
+end
+
 local function UpdateSunuBoneDiagnostics(timeStep)
-    if sunuModel_ == nil then return end
+    if sunuModel_ == nil or playerNode_ == nil then return end
     diag5Accum_ = diag5Accum_ + timeStep
     if diag5Accum_ < 0.5 then return end
     diag5Accum_ = diag5Accum_ - 0.5
@@ -208,31 +250,27 @@ local function UpdateSunuBoneDiagnostics(timeStep)
     for _, boneName in ipairs(sunuDiagnosticBones_) do
         local bone = skeleton:GetBone(boneName)
         if bone ~= nil and bone.node ~= nil then
-            local relativePosition = bone.node.worldPosition - playerNode_.worldPosition
-            local previous = prevBoneRelativePositions_[boneName]
-            if previous ~= nil then
-                local delta = relativePosition - previous
-                if delta:LengthSquared() > 0.00000001 then
+            local localPosition = bone.node.position
+            local localRotation = bone.node.rotation
+            local previousPosition = prevBoneLocalPositions_[boneName]
+            local previousRotation = prevBoneLocalRotations_[boneName]
+            if previousPosition ~= nil and previousRotation ~= nil then
+                local positionDelta = localPosition - previousPosition
+                local rotationChanged = math.abs(localRotation:DotProduct(previousRotation)) < 0.999999
+                if positionDelta:LengthSquared() > 0.00000001 or rotationChanged then
                     movedCount = movedCount + 1
                 end
             end
-            prevBoneRelativePositions_[boneName] = relativePosition
+            prevBoneLocalPositions_[boneName] = localPosition
+            prevBoneLocalRotations_[boneName] = localRotation
             sampledCount = sampledCount + 1
         end
     end
 
-    local currentAnimation = "无"
-    local animationTime = 0.0
-    local animationWeight = 0.0
-    if sunuController_ ~= nil and sunuController_:GetNumAnimations() > 0 then
-        local currentControl = sunuController_:GetAnimation(0)
-        if currentControl ~= nil then
-            currentAnimation = currentControl.name
-            animationTime = sunuController_:GetTime(currentAnimation)
-            animationWeight = sunuController_:GetWeight(currentAnimation)
-        end
-    end
+    diag7BoneMovedCount_ = movedCount
+    diag7SampledBoneCount_ = sampledCount
 
+    local currentAnimation, animationTime, animationWeight = GetCurrentAnimationInfo()
     if not diag5Initialized_ then
         diag5Initialized_ = true
         movedCount = 0
@@ -253,14 +291,26 @@ function PlayerController.Create(scene)
     -- 玩家节点
     playerNode_ = scene:CreateChild("Player")
     prevPlayerPosition_ = playerNode_.worldPosition
-    prevBoneRelativePositions_ = {}
+    prevBoneLocalPositions_ = {}
+    prevBoneLocalRotations_ = {}
+    diagReported_ = {}
     diag5Initialized_ = false
     diag5Accum_ = 0.0
+    diag7Accum_ = 0.0
+    diag7PreviousAnimationTime_ = 0.0
+    diag7HasPreviousTime_ = false
+    diag7BoneMovedCount_ = 0
+    diag7SampledBoneCount_ = 0
+    diagOneShot_ = false
 
     -- 视觉：素女 3D 模型。D3 优先带骨骼版（AnimatedModel + FSM 播 idle/walk/run），
     --   加载失败回退旧静态网格（随节点整体转向/移动），再失败回退白模球，保玩法不破
     local modelNode = playerNode_:CreateChild("ModelNode")
     sunuModelNode_ = modelNode
+    sunuController_ = nil
+    sunuAnimationState_ = nil
+    sunuModel_ = nil
+    sunuRigLoaded_ = false
     sunuFakeTime_ = 0.0
     local rigModel = cache:GetResource("Model", SUNU_RIG_MODEL)
     local rigMat = cache:GetResource("Material", SUNU_RIG_MATERIAL)
@@ -277,32 +327,44 @@ function PlayerController.Create(scene)
         -- 视锥外/遮挡时仍推进动画（真机第三人称背身偶尔被树冠遮挡不至于冻结）
         bodyModel:SetUpdateInvisible(true)
         sunuModel_ = bodyModel
+        sunuRigLoaded_ = true
         -- rig 包围盒高 ≈1.0 且 Min Y=0 → 等比缩放即脚底落地
         modelNode.scale = Vector3(SUNU_HEIGHT, SUNU_HEIGHT, SUNU_HEIGHT)
         -- 节点前向 +Z 与网格前向一致：autoRotateToMoveDir=true 时脸朝移动方向，第三人称相机看到背影
         modelNode:SetRotation(Quaternion(0, Vector3.UP))
         sunuBasePosition_ = modelNode.position
         sunuBaseRotation_ = modelNode.rotation
-        -- 重定向防飘移：禁用 Root/Hip（3D 角色管线标准做法）
+        -- Root 关闭根运动，其他 40 根骨骼显式保持可动画，避免真机导入后更新标志默认为 false。
         local skel = bodyModel:GetSkeleton()
         if skel ~= nil then
-            local rootBone = skel:GetBone("Root")
-            if rootBone ~= nil then rootBone.animated = false end
-            local hipBone = skel:GetBone("Hip")
-            if hipBone ~= nil then hipBone.animated = false end
+            local totalBones = skel:GetNumBones()
+            local animatedBones = 0
+            for boneIndex = 0, totalBones - 1 do
+                local bone = skel:GetBone(boneIndex)
+                if bone ~= nil then
+                    bone.animated = bone.name ~= "Root"
+                    if bone.animated then
+                        animatedBones = animatedBones + 1
+                    end
+                end
+            end
+            diag7AnimatedBoneCount_ = animatedBones
+            diag7TotalBoneCount_ = totalBones
+            print(string.format("[诊断⑦] 骨骼可动画标志已设置 | animated=%d/%d | Root=false",
+                animatedBones, totalBones))
         end
-        -- 诊断①：确认 AnimatedModel、目标骨骼和官方 RuntimeRetargeter 输入资源
-        print(string.format("[诊断①] 模型=AnimatedModel 骨骼数=%d rig=%s retarget=RuntimeRetargeter",
+        -- 诊断①：确认 AnimatedModel、目标骨骼和本地同名动画资源
+        print(string.format("[诊断①] 模型=AnimatedModel 骨骼数=%d rig=%s retarget=本地同名骨骼动画",
             skel ~= nil and skel:GetNumBones() or -1, SUNU_RIG_MODEL))
         if skel ~= nil then
             for _, path in ipairs(SUNU_ANIM_LOCAL) do
                 ---@type Animation|nil
                 local anim = cache:GetResource("Animation", path)
                 if anim == nil then
-                    print("[诊断④] 官方动画缺失 -> " .. path)
+                    print("[诊断④] 动画资源缺失 -> " .. path)
                 else
                     local direct, total = CountBoundTracks(anim, skel)
-                    print(string.format("[诊断④] 官方轨道直连 %d/%d（其余由 RuntimeRetargeter 映射） (%s) len=%.2fs",
+                    print(string.format("[诊断④] 同名轨道直连 %d/%d（目标骨骼可直接驱动） (%s) len=%.2fs",
                         direct, total, path, anim:GetLength()))
                 end
             end
@@ -578,6 +640,64 @@ function PlayerController.PostUpdate(timeStep)
         UpdateSunuFakeAnimation(timeStep, movingIntent, runningIntent)
     end
     UpdateSunuBoneDiagnostics(timeStep)
+
+    -- 诊断⑦：确认真机/离线每帧均由引擎推进 AnimationController 与 AnimatedModel 骨骼。
+    -- Engine API 中没有 AnimationController:Update()/AnimatedModel:UpdateAnimation()，
+    -- 因此这里只读取状态，不调用不存在的手动更新接口。
+    diag7Accum_ = diag7Accum_ + timeStep
+    if sunuRigLoaded_ and diag7Accum_ >= 1.0 then
+        diag7Accum_ = diag7Accum_ - 1.0
+        local animationName, animationTime, animationWeight = GetCurrentAnimationInfo()
+        local stateEnabled = false
+        if sunuController_ ~= nil and animationName ~= "无" then
+            local state = sunuController_:GetAnimationState(animationName)
+            if state ~= nil then
+                stateEnabled = state:IsEnabled()
+            end
+        end
+        local timeDelta = 0.0
+        local timeChanged = false
+        if diag7HasPreviousTime_ then
+            timeDelta = animationTime - diag7PreviousAnimationTime_
+            timeChanged = math.abs(timeDelta) > 0.0001
+        end
+        diag7PreviousAnimationTime_ = animationTime
+        diag7HasPreviousTime_ = true
+
+        local animatedModelEnabled = sunuModel_:IsEnabledEffective()
+        local rootAnimated = "未知"
+        local hipAnimated = "未知"
+        local leftThighAnimated = "未知"
+        local rightThighAnimated = "未知"
+        local skeleton = sunuModel_:GetSkeleton()
+        if skeleton ~= nil then
+            local rootBone = skeleton:GetBone("Root")
+            local hipBone = skeleton:GetBone("Hip")
+            local leftThighBone = skeleton:GetBone("L_Thigh")
+            local rightThighBone = skeleton:GetBone("R_Thigh")
+            if rootBone ~= nil then rootAnimated = tostring(rootBone.animated) end
+            if hipBone ~= nil then hipAnimated = tostring(hipBone.animated) end
+            if leftThighBone ~= nil then leftThighAnimated = tostring(leftThighBone.animated) end
+            if rightThighBone ~= nil then rightThighAnimated = tostring(rightThighBone.animated) end
+        end
+        print(string.format("[诊断⑦] UpdateAnimation=引擎生命周期自动推进 | 骨骼更新标志=%d/%d | 蒙皮/AnimatedModel enabled=%s | AnimationState enabled=%s | weight=%.2f | time=%.2f delta=%.2f changed=%s | 采样骨骼姿态变化=%d/%d | animated(Root/Hip/L_Thigh/R_Thigh)=%s/%s/%s/%s | updateInvisible=%s | clip=%s",
+            diag7AnimatedBoneCount_,
+            diag7TotalBoneCount_,
+            animatedModelEnabled and "是" or "否",
+            stateEnabled and "是" or "否",
+            animationWeight,
+            animationTime,
+            timeDelta,
+            timeChanged and "是" or "否",
+            diag7BoneMovedCount_,
+            diag7SampledBoneCount_,
+            rootAnimated,
+            hipAnimated,
+            leftThighAnimated,
+            rightThighAnimated,
+            tostring(sunuModel_:GetUpdateInvisible()),
+            animationName))
+    end
 
     -- 诊断②：读取 AnimationController 实际动画状态权重和时间，不读取不存在的 FSM 状态。
     diagTime_ = diagTime_ + timeStep
