@@ -164,10 +164,11 @@ function EndingScreen.Create(uiRoot)
         card:AddChild(line)
     end
 
+    -- 制作名单回米白系（金仅点缀结局标题）。
     card:AddChild(UI.Label {
         text = "— 制作名单 —",
         fontSize = 15,
-        fontColor = { 235, 200, 120, 255 },
+        fontColor = { 200, 185, 160, 255 },
         marginTop = 8,
     })
     for i = 1, #CREDITS do

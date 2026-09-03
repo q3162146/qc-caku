@@ -145,10 +145,12 @@ function ChapterCard.Create(uiRoot)
         whiteSpace = "normal",
         textStroke = { width = 1.2, color = { 26, 17, 9, 255 } },
     }
+    -- 副题回米白（金仅点缀章回名），深描边保证暗卡面上可读。
     sealLabel_ = UI.Label {
         text = "",
         fontSize = 20,
-        fontColor = { 74, 50, 32, 255 },
+        fontColor = { 246, 241, 231, 255 },
+        textStroke = { width = 0.8, color = { 26, 17, 9, 200 } },
         textAlign = "center",
         width = "100%",
         maxLines = 2,

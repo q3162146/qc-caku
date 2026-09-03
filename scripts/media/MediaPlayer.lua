@@ -830,8 +830,8 @@ function MediaPlayer.Play(paragraph, data)
     local chapterTitle = (pack and pack.title) or ""
     local titleChip = UI.Panel {
         position = "absolute",
-        left = 18,
-        right = 18,
+        left = 14,
+        right = 14,
         padding = { 8, 12 },
         -- ③ 顶条降透明：alpha 128→100，让水墨画面透出；下移 18→26 更轻
         top = 26,
@@ -843,10 +843,13 @@ function MediaPlayer.Play(paragraph, data)
         children = {
             UI.Label {
                 text = chapterTitle,
-                fontSize = 34,
+                -- 章回名 26 号 + 左右边距 14 + 允许换行，长标题不再裁切；金色保留作点缀。
+                fontSize = 26,
                 fontColor = { 235, 200, 120, 255 },
                 width = "100%",
                 textAlign = "center",
+                whiteSpace = "normal",
+                lineHeight = 1.3,
                 textStroke = { width = 1.2, color = { 26, 17, 9, 255 } },
             },
         },

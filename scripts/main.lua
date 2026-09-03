@@ -169,15 +169,15 @@ function Start()
     -- GameHUD 摇杆 + 滑动视角；关平台默认屏上摇杆，避免双摇杆/RunJump
     InputManager.DisableScreenJoystick()
 
-    -- 水墨古风暖调主题：按钮与 Modal 默认样式统一为墨棕/暖金，避免冷蓝跳色。
+    -- 水墨底 + 蓝按钮：面板/边框保持暖墨棕，交互按钮回深青蓝（蓝底白字），金仅作点缀。
     local warmInkTheme = UI.Theme.ExtendTheme(UI.Theme.defaultTheme, {
         colors = {
-            primary = { 120, 78, 30, 255 },
-            primaryHover = { 150, 100, 42, 255 },
-            primaryPressed = { 92, 58, 22, 255 },
-            secondary = { 74, 50, 32, 245 },
-            secondaryHover = { 94, 64, 42, 245 },
-            secondaryPressed = { 56, 38, 25, 245 },
+            primary = { 60, 107, 143, 255 },
+            primaryHover = { 78, 128, 166, 255 },
+            primaryPressed = { 46, 86, 118, 255 },
+            secondary = { 60, 107, 143, 245 },
+            secondaryHover = { 78, 128, 166, 245 },
+            secondaryPressed = { 46, 86, 118, 245 },
             background = { 18, 12, 8, 255 },
             surface = { 32, 26, 20, 245 },
             surfaceHover = { 48, 36, 26, 245 },
@@ -188,7 +188,7 @@ function Start()
             border = { 120, 90, 55, 255 },
             borderFocus = { 255, 214, 142, 255 },
             warning = { 235, 200, 120, 255 },
-            info = { 160, 122, 70, 255 },
+            info = { 60, 107, 143, 255 },
             disabled = { 66, 52, 39, 255 },
             disabledText = { 120, 105, 88, 255 },
             disabledBorder = { 90, 72, 52, 255 },

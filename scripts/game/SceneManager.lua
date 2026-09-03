@@ -438,9 +438,16 @@ function BuildChaoyangGukou(root)
         shape:SetCylinder(0.7, OLDMAN_HEIGHT, Vector3(0, OLDMAN_HEIGHT / 2, 0))
     end
     -- 交互点（走近触发对话：P02 完成条件，节点名 Int_oldman）
-    WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
+    -- 交互靠节点邻近轮询（PlayerController PICKUP_RADIUS），与视觉无关；
+    -- 隐藏绿球渲染，仅保留节点与碰撞体，画面更干净。
+    local oldmanTrigger = WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
         { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true,
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
+    -- Node 无 SetVisible（Widget 才有）：仅关闭球体渲染组件，保留节点 + RigidBody + CollisionShape。
+    local oldmanBall = oldmanTrigger:GetComponent("StaticModel")
+    if oldmanBall ~= nil then
+        oldmanBall.enabled = false
+    end
     -- 老人交互由 Int_oldman 触发；灯具保留灯柱与局部暖光，不再创建顶部球体。
     local lampLightNode = scene_:CreateChild("OldManWarmLight")
     WhiteBox.Cylinder(scene_, "OldManLampPost",

@@ -72,7 +72,7 @@ function GameGuide.Create(uiRoot)
             UI.Label {
                 text = "操作提示",
                 fontSize = 26,
-                fontColor = { 235, 200, 120, 255 },
+                fontColor = { 246, 241, 231, 255 },
                 textAlign = "center",
                 width = "100%",
                 marginBottom = 16,
@@ -118,7 +118,7 @@ function GameGuide.Create(uiRoot)
     content:AddChild(UI.Label {
         text = "操作",
         fontSize = 20,
-        fontColor = { 235, 200, 120, 255 },
+        fontColor = { 246, 241, 231, 255 },
         width = "100%",
     })
     content:AddChild(UI.Label {
@@ -133,7 +133,7 @@ function GameGuide.Create(uiRoot)
     content:AddChild(UI.Label {
         text = "玩法",
         fontSize = 20,
-        fontColor = { 235, 200, 120, 255 },
+        fontColor = { 246, 241, 231, 255 },
         width = "100%",
     })
     content:AddChild(UI.Label {
@@ -148,7 +148,7 @@ function GameGuide.Create(uiRoot)
     content:AddChild(UI.Label {
         text = "存档与故事",
         fontSize = 20,
-        fontColor = { 235, 200, 120, 255 },
+        fontColor = { 246, 241, 231, 255 },
         width = "100%",
     })
     content:AddChild(UI.Label {
