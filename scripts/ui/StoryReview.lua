@@ -38,7 +38,7 @@ function StoryReview.Create(uiRoot)
         content:AddChild(UI.Label {
             text = chapter.title,
             fontSize = 20,
-            fontColor = { 255, 220, 170, 255 },
+            fontColor = { 235, 200, 120, 255 },
             width = "100%",
             marginTop = index == 1 and 0 or 4,
         })
@@ -46,7 +46,7 @@ function StoryReview.Create(uiRoot)
             text = chapter.text,
             fontSize = 16,
             lineHeight = 1.55,
-            fontColor = { 245, 239, 228, 255 },
+            fontColor = { 246, 241, 231, 255 },
             whiteSpace = "normal",
             width = "100%",
         })
@@ -66,7 +66,10 @@ function StoryReview.Create(uiRoot)
         closeOnOverlay = true,
         closeOnEscape = true,
         showCloseButton = true,
-        backgroundColor = { 28, 24, 31, 245 },
+        backgroundColor = { 28, 24, 20, 245 },
+        borderColor = { 120, 90, 55, 255 },
+        titleTextColor = { 235, 200, 120, 255 },
+        titleFontSize = 20,
         borderRadius = 16,
         contentPadding = 16,
         onClose = function()

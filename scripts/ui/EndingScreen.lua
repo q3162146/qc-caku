@@ -140,11 +140,12 @@ function EndingScreen.Create(uiRoot)
 
     titleLabel_ = UI.Label {
         text = "",
-        fontSize = 22,
-        fontColor = { 246, 241, 231, 255 },
+        fontSize = 28,
+        fontColor = { 235, 200, 120, 255 },
         textAlign = "center",
         whiteSpace = "normal",
         width = "100%",
+        textStroke = { width = 1.2, color = { 26, 17, 9, 255 } },
     }
     card:AddChild(titleLabel_)
 
@@ -152,8 +153,8 @@ function EndingScreen.Create(uiRoot)
     for i = 1, LINE_COUNT do
         local line = UI.Label {
             text = "",
-            fontSize = 14,
-            fontColor = { 210, 202, 190, 255 },
+            fontSize = 16,
+            fontColor = { 246, 241, 231, 255 },
             textAlign = "center",
             whiteSpace = "normal",
             width = "100%",
@@ -165,15 +166,15 @@ function EndingScreen.Create(uiRoot)
 
     card:AddChild(UI.Label {
         text = "— 制作名单 —",
-        fontSize = 13,
-        fontColor = { 190, 182, 170, 255 },
+        fontSize = 15,
+        fontColor = { 235, 200, 120, 255 },
         marginTop = 8,
     })
     for i = 1, #CREDITS do
         card:AddChild(UI.Label {
             text = CREDITS[i],
-            fontSize = 12,
-            fontColor = { 168, 160, 148, 255 },
+            fontSize = 14,
+            fontColor = { 200, 185, 160, 255 },
             textAlign = "center",
             whiteSpace = "normal",
             width = "100%",

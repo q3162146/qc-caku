@@ -169,9 +169,34 @@ function Start()
     -- GameHUD 摇杆 + 滑动视角；关平台默认屏上摇杆，避免双摇杆/RunJump
     InputManager.DisableScreenJoystick()
 
-    -- 3. UI 系统（对话/选项/字幕统一用 urhox-libs/UI）
+    -- 水墨古风暖调主题：按钮与 Modal 默认样式统一为墨棕/暖金，避免冷蓝跳色。
+    local warmInkTheme = UI.Theme.ExtendTheme(UI.Theme.defaultTheme, {
+        colors = {
+            primary = { 120, 78, 30, 255 },
+            primaryHover = { 150, 100, 42, 255 },
+            primaryPressed = { 92, 58, 22, 255 },
+            secondary = { 74, 50, 32, 245 },
+            secondaryHover = { 94, 64, 42, 245 },
+            secondaryPressed = { 56, 38, 25, 245 },
+            background = { 18, 12, 8, 255 },
+            surface = { 32, 26, 20, 245 },
+            surfaceHover = { 48, 36, 26, 245 },
+            surfaceAlt = { 42, 32, 24, 245 },
+            text = { 246, 241, 231, 255 },
+            textSecondary = { 200, 185, 160, 255 },
+            textDisabled = { 120, 105, 88, 255 },
+            border = { 120, 90, 55, 255 },
+            borderFocus = { 255, 214, 142, 255 },
+            warning = { 235, 200, 120, 255 },
+            info = { 160, 122, 70, 255 },
+            disabled = { 66, 52, 39, 255 },
+            disabledText = { 120, 105, 88, 255 },
+            disabledBorder = { 90, 72, 52, 255 },
+        },
+    })
+    -- 字体由 UI 内置资源处理；颜色和字号在业务控件中显式覆盖。
     UI.Init({
-        theme = "default-dark",
+        theme = warmInkTheme,
         scale = UI.Scale.DEFAULT,
     })
 

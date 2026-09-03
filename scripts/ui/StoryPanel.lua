@@ -13,14 +13,15 @@ StoryPanel.MIN_HEIGHT = "28%"
 StoryPanel.BOTTOM = "3%"
 StoryPanel.PADDING = 20
 StoryPanel.RADIUS = 16
--- ③ 底条降透明：alpha 205→110，让水墨画面透出（文字加细描边保可读，见 DialogueUI）
-StoryPanel.BG = { 32, 26, 20, 110 }
-StoryPanel.BORDER = { 210, 176, 128, 90 }
+-- 底板保持半透水墨质感，同时提高正文与选项的对比度。
+StoryPanel.BG = { 32, 26, 20, 150 }
+StoryPanel.BORDER = { 120, 90, 55, 160 }
 StoryPanel.NAME_SIZE = 16
 StoryPanel.LINE_SIZE = 24
 StoryPanel.PROMPT_SIZE = 20
-StoryPanel.NAME_COLOR = { 255, 214, 158, 255 }
-StoryPanel.TEXT_COLOR = { 255, 248, 236, 255 }
+-- 水墨古风暖调文字：米白正文、妃金人名，统一深描边。
+StoryPanel.NAME_COLOR = { 255, 214, 142, 255 }
+StoryPanel.TEXT_COLOR = { 246, 241, 231, 255 }
 StoryPanel.BTN_HEIGHT = 44
 
 --- 按约 14 字/行切成最多 2 行的页（中文按字计，英文按空格）

@@ -72,7 +72,7 @@ function GameGuide.Create(uiRoot)
             UI.Label {
                 text = "操作提示",
                 fontSize = 26,
-                fontColor = { 255, 225, 180, 255 },
+                fontColor = { 235, 200, 120, 255 },
                 textAlign = "center",
                 width = "100%",
                 marginBottom = 16,
@@ -89,7 +89,7 @@ function GameGuide.Create(uiRoot)
             UI.Label {
                 text = "点击任意处关闭",
                 fontSize = 14,
-                fontColor = { 210, 198, 185, 220 },
+                fontColor = { 200, 185, 160, 255 },
                 textAlign = "center",
                 width = "100%",
                 marginTop = 18,
@@ -118,14 +118,14 @@ function GameGuide.Create(uiRoot)
     content:AddChild(UI.Label {
         text = "操作",
         fontSize = 20,
-        fontColor = { 255, 220, 170, 255 },
+        fontColor = { 235, 200, 120, 255 },
         width = "100%",
     })
     content:AddChild(UI.Label {
         text = "左下摇杆移动\n滑动屏幕转动视角",
         fontSize = 17,
         lineHeight = 1.45,
-        fontColor = { 245, 239, 228, 255 },
+        fontColor = { 246, 241, 231, 255 },
         whiteSpace = "normal",
         width = "100%",
     })
@@ -133,14 +133,14 @@ function GameGuide.Create(uiRoot)
     content:AddChild(UI.Label {
         text = "玩法",
         fontSize = 20,
-        fontColor = { 255, 220, 170, 255 },
+        fontColor = { 235, 200, 120, 255 },
         width = "100%",
     })
     content:AddChild(UI.Label {
         text = "走近发光桃花可采，集齐五行桃花；走近守桃老人会触发对白。三选会影响故事走向与信念，不同选择将导向不同结局。",
         fontSize = 17,
         lineHeight = 1.45,
-        fontColor = { 245, 239, 228, 255 },
+        fontColor = { 246, 241, 231, 255 },
         whiteSpace = "normal",
         width = "100%",
     })
@@ -148,14 +148,14 @@ function GameGuide.Create(uiRoot)
     content:AddChild(UI.Label {
         text = "存档与故事",
         fontSize = 20,
-        fontColor = { 255, 220, 170, 255 },
+        fontColor = { 235, 200, 120, 255 },
         width = "100%",
     })
     content:AddChild(UI.Label {
         text = "游戏会自动存档，随时可从主菜单「继续游戏」继续。\n《桃素洛无幽·素女篇》——一个关于等待、遗忘与重逢的故事。",
         fontSize = 17,
         lineHeight = 1.45,
-        fontColor = { 245, 239, 228, 255 },
+        fontColor = { 246, 241, 231, 255 },
         whiteSpace = "normal",
         width = "100%",
     })
@@ -167,7 +167,10 @@ function GameGuide.Create(uiRoot)
         closeOnOverlay = true,
         closeOnEscape = true,
         showCloseButton = true,
-        backgroundColor = { 28, 24, 31, 245 },
+        backgroundColor = { 28, 24, 20, 245 },
+        borderColor = { 120, 90, 55, 255 },
+        titleTextColor = { 235, 200, 120, 255 },
+        titleFontSize = 20,
         borderRadius = 16,
         contentPadding = 16,
     }

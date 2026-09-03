@@ -124,10 +124,10 @@ function ChapterCard.Create(uiRoot)
         marginTop = "10%",
         gap = 10,
         padding = 12,
-        backgroundColor = { 28, 22, 18, 210 },
+        backgroundColor = { 28, 22, 18, 225 },
         borderRadius = 16,
         borderWidth = 1,
-        borderColor = { 210, 176, 128, 90 },
+        borderColor = { 120, 90, 55, 160 },
     }
     art_ = UI.Panel {
         width = "100%",
@@ -135,20 +135,20 @@ function ChapterCard.Create(uiRoot)
         borderRadius = 10,
         backgroundColor = { 30, 26, 24, 255 },
     }
-    -- UI 精修 ①：章回名 20→32（同色细描边模拟加粗），副题 14→20，真机醒目可读
+    -- 章回名采用暖金大字 + 深描边；副题采用深棕，适配深色水墨卡面。
     titleLabel_ = UI.Label {
         text = "",
-        fontSize = 32,
-        fontColor = { 246, 241, 231, 255 },
+        fontSize = 34,
+        fontColor = { 235, 200, 120, 255 },
         textAlign = "center",
         width = "100%",
         whiteSpace = "normal",
-        textStroke = { width = 1.2, color = { 246, 241, 231, 255 } },
+        textStroke = { width = 1.2, color = { 26, 17, 9, 255 } },
     }
     sealLabel_ = UI.Label {
         text = "",
         fontSize = 20,
-        fontColor = { 200, 172, 140, 255 },
+        fontColor = { 74, 50, 32, 255 },
         textAlign = "center",
         width = "100%",
         maxLines = 2,

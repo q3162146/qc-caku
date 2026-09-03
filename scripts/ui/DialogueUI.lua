@@ -178,7 +178,7 @@ function RenderText()
             lineHeight = 1.4,
             whiteSpace = "normal",
             marginTop = 8,
-            textStroke = { width = 0.8, color = { 16, 10, 8, 160 } },
+            textStroke = { width = 0.8, color = { 26, 17, 9, 255 } },
         },
         UI.Button {
             text = hasMore and "下一步" or "下一步",
@@ -240,7 +240,7 @@ function RenderChoice()
             maxLines = 2,
             lineHeight = 1.4,
             whiteSpace = "normal",
-            textStroke = { width = 0.8, color = { 16, 10, 8, 160 } },
+            textStroke = { width = 0.8, color = { 26, 17, 9, 255 } },
         },
     }
     local order = spec.choiceOrder

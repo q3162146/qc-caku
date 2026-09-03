@@ -843,11 +843,11 @@ function MediaPlayer.Play(paragraph, data)
         children = {
             UI.Label {
                 text = chapterTitle,
-                fontSize = 16,
-                fontColor = { 255, 226, 186, 255 },
+                fontSize = 34,
+                fontColor = { 235, 200, 120, 255 },
                 width = "100%",
                 textAlign = "center",
-                textStroke = { width = 1, color = { 20, 12, 8, 180 } },
+                textStroke = { width = 1.2, color = { 26, 17, 9, 255 } },
             },
         },
     }
@@ -861,7 +861,7 @@ function MediaPlayer.Play(paragraph, data)
         lineHeight = 1.4,
         whiteSpace = "normal",
         textAlign = "center",
-        textStroke = { width = 1.2, color = { 16, 10, 8, 210 } },
+        textStroke = { width = 1.2, color = { 26, 17, 9, 255 } },
     }
     -- ③ 底条降透明 alpha 128→100；底部 8%→11% 抬高不贴死
     local captionBar = UI.Panel {
