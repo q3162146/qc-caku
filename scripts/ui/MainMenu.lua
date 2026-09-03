@@ -89,7 +89,7 @@ function MainMenu.Create(uiRoot)
     }
     local titleBlock = UI.Panel {
         position = "absolute",
-        top = "10%",
+        top = "5%",
         left = "6%",
         right = "6%",
         alignItems = "center",
