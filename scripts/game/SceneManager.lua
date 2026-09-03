@@ -441,12 +441,10 @@ function BuildChaoyangGukou(root)
     WhiteBox.Sphere(scene_, "Int_oldman", Vector3(oldManPos.x, 0.5, oldManPos.z + 1.8), 0.5,
         { 0.55, 0.85, 0.45 }, { unlit = true, trigger = true,
             layer = WhiteBox.LAYER_TRIGGER, mask = WhiteBox.LAYER_PLAYER })
-    -- 老人交互由 Int_oldman 触发；只保留自然灯具与局部暖光，不创建竖直光柱。
+    -- 老人交互由 Int_oldman 触发；灯具保留灯柱与局部暖光，不再创建顶部球体。
     local lampLightNode = scene_:CreateChild("OldManWarmLight")
     WhiteBox.Cylinder(scene_, "OldManLampPost",
         Vector3(oldManPos.x + 1.4, 0.7, oldManPos.z - 0.6), 0.16, 1.4, { 0.42, 0.32, 0.24 })
-    WhiteBox.Sphere(scene_, "OldManLamp",
-        Vector3(oldManPos.x + 1.4, 1.55, oldManPos.z - 0.6), 0.28, { 1.0, 0.82, 0.48 }, { unlit = true })
     local lampLightNode = scene_:CreateChild("OldManWarmLight")
     lampLightNode.position = Vector3(oldManPos.x + 1.4, 1.6, oldManPos.z - 0.6)
     local lampLight = lampLightNode:CreateComponent("Light")
@@ -481,7 +479,7 @@ function BuildChaoyangGukou(root)
     SwapToProp(scene_, GetNodes(scene_, { "WatchPlatform", "WatchMarker" }),
         "WatchPlatform_Visual", "watch_altar", Vector3(5, 0, 10), { x = 3.2, y = 1.0, z = 3.2 }, -15)
     -- 老人旁矮灯 → 真实古风灯柱（暖点光保留）
-    SwapToProp(scene_, GetNodes(scene_, { "OldManLampPost", "OldManLamp" }),
+    SwapToProp(scene_, GetNodes(scene_, { "OldManLampPost" }),
         "OldManLamp_Visual", "lamp_post",
         Vector3(oldManPos.x + 1.4, 0, oldManPos.z - 0.6), 1.6, 0)
     -- 五朵桃花 → 真实桃花丛（触发球节点名/位置/碰撞不动；采集随父节点一并移除）
