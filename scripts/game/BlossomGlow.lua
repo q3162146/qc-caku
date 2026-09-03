@@ -2,13 +2,12 @@
 -- game/BlossomGlow.lua
 -- 桃花标记发光特效（真机外观修复 ①）：让五朵五行桃花远处可辨、走近可采。
 -- 每朵（Blossom_<key> 触发球为父节点）叠加：
---   1) 发光外壳：略大于触发球的 unlit 半透壳（additive 叠加更亮，castShadows=false）；
---   2) 呼吸脉冲：Update 按 sin 缩放外壳（scale 0.92~1.18 脉动）；
---   3) 点光源：对应五行 rgb、range 2.5、不投影，照亮周围地面；
---   4) 漂浮微光：每朵一个微型 ParticleEmitter（petal.png、≤12 粒、不投影）；
---   5) 采集提示：玩家靠近（<2.2m）外壳放大 1.35 + 点光增亮，离开恢复。
+--   1) 五行色点光源：对应 rgb、range 2.5、不投影，照亮周围地面；
+--   2) 点光呼吸脉冲：Update 按 sin 轻微调整亮度，靠近时增亮提示可采；
+--   3) 漂浮微光：每朵一个微型 ParticleEmitter（petal.png、≤12 粒、不投影）；
+-- 不再创建 additive 无贴图发光球壳，避免桃花处出现白色实心球。
 -- 挂在 Blossom_<key> 触发球节点下：FlowController 采集 node:Remove() 时
--- 子树（壳/灯/粒子）随父节点一并移除，无需额外清理。
+-- 子树（灯/粒子）随父节点一并移除，无需额外清理。
 -- 开销：每朵 1 灯 1 发射器 ≤12 粒；同屏最多 5 朵 = 5 灯 + 60 粒，远低于性能红线。
 -- ============================================================================
 
@@ -19,9 +18,8 @@ local BlossomGlow = {}
 local PETAL_TEXTURE = "textures/petal.png"
 local PETAL_TECH = "Techniques/DiffUnlitAlpha.xml"
 local NEAR_RADIUS = 2.2        -- 靠近高亮半径（米；略大于采集半径 1.6 提前给提示）
-local PULSE_SPEED = 2.4       -- 呼吸角速度（rad/s）
-local SHELL_BASE = 0.85       -- 外壳基准直径（触发球 0.6 → 壳略大）
-local NEAR_BOOST = 1.35       -- 靠近时外壳放大倍率
+local PULSE_SPEED = 2.4       -- 呼吸角速度（rad/s)
+local NEAR_BOOST = 1.35       -- 靠近时点光增亮
 
 --- 五行配色（与 SceneManager blossomSpots rgb 一致；点光/外壳同色）
 local BLOSSOM_RGB = {
@@ -34,30 +32,12 @@ local BLOSSOM_RGB = {
 
 ---@class BlossomGlowEntry
 ---@field bNode Node 触发球节点
----@field shell Node 发光外壳节点
----@field shellModel StaticModel|nil
 ---@field light Light|nil 点光源
 ---@field emitter ParticleEmitter|nil 微光粒子
 ---@field phase number 呼吸相位（错开各朵脉动）
 ---@field near boolean 当前是否靠近
 local entries_ = {}           ---@type BlossomGlowEntry[]
 local time_ = 0
-
---- 发光外壳材质：优先 NoTextureAddAlpha（加色混合、无需贴图=强发光观感），
---- 引擎无该 Technique 时回退 NoTextureUnlit（unlit 不受光照衰减，仍亮）。
----@param rgb table
----@return Material
-local function MakeGlowMaterial(rgb)
-    local mat = Material:new()
-    local tech = cache:GetResource("Technique", "Techniques/NoTextureAddAlpha.xml")
-    if tech == nil then
-        tech = cache:GetResource("Technique", "Techniques/NoTextureUnlit.xml")
-    end
-    mat:SetTechnique(0, tech)
-    mat:SetShaderParameter("MatDiffColor",
-        Variant(Color(rgb[1], rgb[2], rgb[3], 0.75)))
-    return mat
-end
 
 --- 微光粒子效果（花瓣贴图 + 极少量上浮闪烁粒子）
 ---@param mat Material
@@ -99,15 +79,7 @@ function BlossomGlow.Attach(bNode, key)
     if bNode == nil then return end
     local rgb = BLOSSOM_RGB[key] or { 1, 0.8, 0.9 }
 
-    -- 1) 发光外壳（unlit 半透 + additive；不投影、无碰撞）
-    local shell = bNode:CreateChild("GlowShell_" .. key)
-    local shellModel = shell:CreateComponent("StaticModel")
-    shellModel:SetModel(cache:GetResource("Model", "Models/Sphere.mdl"))
-    shellModel:SetMaterial(MakeGlowMaterial(rgb))
-    shellModel.castShadows = false
-    shell.scale = Vector3(SHELL_BASE, SHELL_BASE, SHELL_BASE)
-
-    -- 2) 点光源（五行色、range 2.5、不投影）
+    -- 1) 点光源（五行色、range 2.5、不投影）
     local lightNode = bNode:CreateChild("GlowLight_" .. key)
     ---@type Light
     local light = lightNode:CreateComponent("Light")
@@ -117,7 +89,7 @@ function BlossomGlow.Attach(bNode, key)
     light.range = 2.5
     light.castShadows = false
 
-    -- 3) 漂浮微光粒子（花瓣贴图，轻量）
+    -- 2) 漂浮微光粒子（花瓣贴图，轻量）
     ---@type ParticleEmitter|nil
     local emitter = nil
     local petalTex = cache:GetResource("Texture2D", PETAL_TEXTURE)
@@ -136,8 +108,6 @@ function BlossomGlow.Attach(bNode, key)
 
     table.insert(entries_, {
         bNode = bNode,
-        shell = shell,
-        shellModel = shellModel,
         light = light,
         emitter = emitter,
         phase = #entries_ * 1.3,   -- 错开各朵呼吸相位
@@ -176,7 +146,6 @@ function BlossomGlow.Update(dt)
         if e ~= nil and e.bNode ~= nil and e.bNode:GetParent() ~= nil then
             table.insert(alive, e)
 
-            -- 靠近检测 → 高亮（外壳放大 + 点光增亮）
             local near = false
             if hasPlayer then
                 local wp = e.bNode.worldPosition
@@ -186,11 +155,7 @@ function BlossomGlow.Update(dt)
             end
             e.near = near
 
-            -- 呼吸脉冲：sin 缩放 0.92~1.18；靠近时整体放大 1.35（采集提示）
-            local pulse = 1.0 + 0.13 * math.sin(time_ * PULSE_SPEED + e.phase)
-            local boost = near and NEAR_BOOST or 1.0
-            local s = SHELL_BASE * pulse * boost
-            e.shell.scale = Vector3(s, s, s)
+            -- 呼吸脉冲：只调整点光亮度；靠近时增亮作为采集提示。
             if e.light ~= nil then
                 e.light.brightness = (near and 2.2 or 1.2)
                     + 0.3 * math.sin(time_ * PULSE_SPEED + e.phase)
