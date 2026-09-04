@@ -128,17 +128,6 @@ function MainMenu.Create(uiRoot)
                 marginTop = 16,
                 textStroke = { width = 0.8, color = { 255, 246, 232, 160 } },
             },
-            -- 诗化氛围引言：小字深棕红、低存在，不抢主标题。
-            UI.Label {
-                text = "春风拂起的漫天桃花香中，素女一定在某个地方，见到了无幽。",
-                fontSize = 14,
-                fontColor = { 140, 70, 35, 200 },
-                letterSpacing = 0.5,
-                textAlign = "center",
-                width = "100%",
-                marginTop = 10,
-                textStroke = { width = 0.6, color = { 255, 246, 232, 120 } },
-            },
         },
     }
     continueBtn_ = UI.Button {
