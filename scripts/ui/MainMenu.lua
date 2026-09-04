@@ -119,13 +119,14 @@ function MainMenu.Create(uiRoot)
             UI.Label {
                 text = "一个关于等待、遗忘与重逢的故事",
                 fontSize = 20,
-                fontColor = { 74, 50, 32, 255 },
+                -- 副题深棕/棕红 + 细浅米描边：浅底高对比、立体不发白。
+                fontColor = { 140, 70, 35, 255 },
                 fontWeight = "bold",
                 letterSpacing = 0.8,
                 textAlign = "center",
                 width = "100%",
                 marginTop = 16,
-                textStroke = { width = 1.2, color = { 26, 17, 9, 255 } },
+                textStroke = { width = 0.8, color = { 255, 246, 232, 160 } },
             },
         },
     }
