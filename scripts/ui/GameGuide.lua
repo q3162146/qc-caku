@@ -115,6 +115,16 @@ function GameGuide.Create(uiRoot)
         gap = 12,
         paddingBottom = 8,
     }
+    -- 诗化引言（与原标语并存）：点出十二年守望与桃花香之约。
+    content:AddChild(UI.Label {
+        text = "青丘之外，朝阳谷口，一个女子用十二年守望，换春风再度拂起时满山桃花香的约定。",
+        fontSize = 16,
+        lineHeight = 1.5,
+        fontColor = { 200, 185, 160, 255 },
+        whiteSpace = "normal",
+        width = "100%",
+    })
+    content:AddChild(UI.Divider { color = { 210, 176, 128, 90 }, spacing = 2 })
     content:AddChild(UI.Label {
         text = "操作",
         fontSize = 20,
